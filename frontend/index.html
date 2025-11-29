@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SAN University - Student Portal</title>
-    <!-- CORRECTED LINK: styles.css (plural) -->
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -18,7 +17,7 @@
                 <p>Welcome to the Next-Gen Student Portal.</p>
             </div>
             <div class="login-right">
-                <h2>Student Login</h2>
+                <h2>Sign In</h2>
                 <div class="error-message" id="errorMessage"></div>
                 <form id="loginForm">
                     <div class="input-group">
@@ -91,7 +90,7 @@
                     </div>
                 </div>
 
-                <!-- 4. ADVISING (UPDATED: Complex 2-Column Layout) -->
+                <!-- 4. ADVISING -->
                 <div id="view-advising" class="view-section">
                     <div class="advising-layout">
                         <!-- Left: Course Catalog -->
@@ -103,27 +102,17 @@
                             <div id="advisingCatalog" class="catalog-list">Loading courses...</div>
                         </div>
 
-                        <!-- Right: Advising Slip (Cart) -->
+                        <!-- Right: Advising Slip -->
                         <div class="card slip-card">
                             <div style="background:#f8fafc; padding:15px; border-bottom:1px solid #e2e8f0;">
                                 <h3 style="margin:0; border:none; font-size:1.1em;">Advising Slip</h3>
                             </div>
-                            
                             <div id="advisingSlipList" class="slip-list">
-                                <div class="empty-state">
-                                    <i class="fas fa-basket-shopping"></i>
-                                    <p>Select courses from the catalog to add them here.</p>
-                                </div>
+                                <div class="empty-state"><i class="fas fa-basket-shopping"></i><p>Select courses from the catalog to add them here.</p></div>
                             </div>
-                            
                             <div class="slip-footer">
-                                <div class="slip-summary">
-                                    <span>Total Credits:</span>
-                                    <span id="slipTotalCredits" style="font-weight:bold; color:#4F46E5;">0</span>
-                                </div>
-                                <button id="confirmSlipBtn" class="confirm-btn">
-                                    Confirm Registration <i class="fas fa-arrow-right"></i>
-                                </button>
+                                <div class="slip-summary"><span>Total Credits:</span><span id="slipTotalCredits" style="font-weight:bold; color:#4F46E5;">0</span></div>
+                                <button id="confirmSlipBtn" class="confirm-btn">Confirm Registration <i class="fas fa-arrow-right"></i></button>
                             </div>
                         </div>
                     </div>
@@ -136,6 +125,71 @@
                         <div id="financialsContainer">Loading...</div>
                     </div>
                 </div>
+
+                <!-- 6. PROFILE (NEW ADDITION) -->
+                <div id="view-profile" class="view-section">
+                    <div class="card profile-card">
+                        <div class="profile-header-large">
+                            <div class="profile-avatar-xl" id="pAvatar">S</div>
+                            <div class="profile-title">
+                                <h2 id="pName">Loading...</h2>
+                                <p id="pProgram" style="margin: 5px 0; opacity: 0.8;">...</p>
+                                <div style="display:flex; gap:10px; margin-top:10px;">
+                                    <span class="status-badge" id="pId">ID: ...</span>
+                                    <span class="status-badge" style="background:#e0e7ff; color:#4338ca;" id="pDept">Dept: ...</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="profile-body">
+                            <!-- Academic Info -->
+                            <div class="profile-section">
+                                <h3><i class="fas fa-graduation-cap"></i> Academic Info</h3>
+                                <div class="info-grid">
+                                    <div class="info-item"><label>Unique ID</label><span id="pUniqueId">...</span></div>
+                                    <div class="info-item"><label>Admitted</label><span id="pAdmitted">...</span></div>
+                                    <div class="info-item"><label>Credits Done</label><span id="pCredits">0</span></div>
+                                    <div class="info-item"><label>Current CGPA</label><span id="pCgpa" style="color:#4F46E5; font-weight:bold;">0.00</span></div>
+                                </div>
+                            </div>
+
+                            <!-- Personal Info -->
+                            <div class="profile-section">
+                                <h3><i class="fas fa-user"></i> Personal Info</h3>
+                                <div class="info-grid">
+                                    <div class="info-item"><label>Date of Birth</label><span id="pDob">...</span></div>
+                                    <div class="info-item"><label>Blood Group</label><span id="pBlood">...</span></div>
+                                    <div class="info-item"><label>NID / Passport</label><span id="pNid">...</span></div>
+                                    <div class="info-item"><label>Marital Status</label><span id="pMarital">...</span></div>
+                                </div>
+                            </div>
+
+                            <!-- Contact Info -->
+                            <div class="profile-section" style="grid-column: span 2;">
+                                <h3><i class="fas fa-address-card"></i> Contact Information</h3>
+                                <div class="info-grid">
+                                    <div class="info-item"><label>Email Address</label><span id="pEmail">...</span></div>
+                                    <div class="info-item"><label>Phone Number</label><span id="pPhone">...</span></div>
+                                    <div class="info-item" style="grid-column: span 2;"><label>Present Address</label><span id="pPresent">...</span></div>
+                                    <div class="info-item" style="grid-column: span 2;"><label>Permanent Address</label><span id="pPermanent">...</span></div>
+                                </div>
+                            </div>
+
+                            <!-- Advisor Info -->
+                            <div class="profile-section" style="grid-column: span 2;">
+                                <h3><i class="fas fa-chalkboard-teacher"></i> Academic Advisor</h3>
+                                <div class="advisor-box">
+                                    <div class="advisor-icon"><i class="fas fa-user-tie"></i></div>
+                                    <div>
+                                        <div style="font-weight:bold; font-size:1.1em;" id="pAdvisorName">...</div>
+                                        <div style="color:#666; font-size:0.9em;" id="pAdvisorEmail">...</div>
+                                        <div style="font-size:0.85em; color:#4F46E5; margin-top:5px; font-weight:600;">(Faculty Advisor)</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- RIGHT: MENU -->
@@ -144,6 +198,8 @@
                     <h3 style="font-size:0.9em; color:#9ca3af; margin-bottom:15px; letter-spacing:1px; text-transform:uppercase;">Menu</h3>
                     <div class="nav-menu">
                         <button class="nav-btn active" data-view="home"><i class="fas fa-home"></i> Home</button>
+                        <!-- Added Profile Button Here -->
+                        <button class="nav-btn" data-view="profile"><i class="fas fa-user-circle"></i> My Profile</button>
                         <button class="nav-btn" data-view="schedule"><i class="fas fa-calendar-alt"></i> Class Schedule</button>
                         <button class="nav-btn" data-view="grades"><i class="fas fa-graduation-cap"></i> Grade Report</button>
                         <button class="nav-btn" data-view="advising"><i class="fas fa-edit"></i> Advising Portal</button>

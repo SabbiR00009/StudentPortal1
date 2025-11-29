@@ -262,6 +262,9 @@ body {
 #btn-home::before {
   content: "\f015";
 } /* House */
+#btn-profile::before {
+  content: "\f007";
+} /* User */
 #btn-schedule::before {
   content: "\f073";
 } /* Calendar */
@@ -473,6 +476,115 @@ td {
   font-size: 1.2em;
 }
 
+/* --- PROFILE STYLES (NEW) --- */
+.profile-card {
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+}
+.profile-header-large {
+  background: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);
+  padding: 40px;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 30px;
+}
+.profile-avatar-xl {
+  width: 100px;
+  height: 100px;
+  background: white;
+  color: #4f46e5;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5em;
+  font-weight: 800;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+.profile-title h2 {
+  margin: 0;
+  font-size: 2em;
+  font-weight: 700;
+}
+.status-badge {
+  display: inline-block;
+  background: #d1fae5;
+  color: #065f46;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.85em;
+  font-weight: bold;
+}
+
+.profile-body {
+  padding: 30px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+}
+.profile-section {
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 25px;
+  border: 1px solid #f3f4f6;
+}
+.profile-section h3 {
+  color: #4b5563;
+  font-size: 1em;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 10px;
+  margin-top: 0;
+  margin-bottom: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.info-item label {
+  display: block;
+  font-size: 0.75em;
+  text-transform: uppercase;
+  color: #9ca3af;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.info-item span {
+  display: block;
+  font-size: 1.05em;
+  color: #1f2937;
+  font-weight: 500;
+}
+
+.advisor-box {
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+  padding: 15px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+.advisor-icon {
+  width: 50px;
+  height: 50px;
+  background: #4f46e5;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5em;
+}
+
 /* --- RESTORED GRADE & THEME STYLES --- */
 .semester-header {
   padding: 18px 25px;
@@ -550,6 +662,9 @@ td {
     grid-template-columns: 1fr;
   }
   .advising-layout {
+    grid-template-columns: 1fr;
+  }
+  .profile-body {
     grid-template-columns: 1fr;
   }
 }

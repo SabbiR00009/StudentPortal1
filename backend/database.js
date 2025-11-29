@@ -6,12 +6,24 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS students (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     student_id TEXT UNIQUE NOT NULL,
+    unique_id TEXT UNIQUE, 
     password TEXT NOT NULL,
     name TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
+    phone TEXT,
+    program TEXT,
     department TEXT NOT NULL,
+    admitted_semester TEXT,
     year INTEGER NOT NULL,
-    semester TEXT NOT NULL,
+    semester TEXT NOT NULL, -- Current Semester
+    dob TEXT,
+    blood_group TEXT,
+    nid TEXT,
+    marital_status TEXT,
+    present_address TEXT,
+    permanent_address TEXT,
+    advisor_name TEXT,
+    advisor_email TEXT,
     gpa REAL DEFAULT 0.0,
     avatar TEXT DEFAULT 'https://ui-avatars.com/api/?name=Student&background=4F46E5&color=fff',
     advising_status TEXT DEFAULT 'pending'
@@ -92,18 +104,15 @@ db.exec(`
 const studentCount = db.prepare("SELECT COUNT(*) as count FROM students").get();
 
 if (studentCount.count === 0) {
-  console.log(
-    "Seeding database with expanded dataset (50 students + full catalog)..."
-  );
+  console.log("Seeding database with dynamic semesters and unique advisors...");
 
   // A. Insert Admin
   db.prepare(
     `INSERT INTO admins (email, password, name) VALUES ('sabbir.hossain.28678@gmail.com', 'sabbir009', 'Admin Sabbir')`
   ).run();
 
-  // B. Generate Expanded Course Catalog
+  // B. Generate Course Catalog
   const baseCourses = [
-    // Computer Science Core
     ["CSE101", "Intro to Computer Science", 3, "Dr. Ada Lovelace"],
     ["CSE102", "Programming Language I", 3, "Dr. Grace Hopper"],
     ["CSE203", "Data Structures", 3, "Dr. James Lee"],
@@ -124,8 +133,6 @@ if (studentCount.count === 0) {
     ["CSE495", "Thesis/Project", 3, "Ahmed Adnan"],
     ["CSE350", "Digital System Design", 4, "Nahid Hasan"],
     ["CSE350L", "DSD Lab", 4, "Nahid Hasan"],
-
-    // Math & Science
     ["MAT101", "Calculus I", 3, "Dr. Euler"],
     ["MAT102", "Calculus II", 3, "Dr. Leibniz"],
     ["MAT203", "Linear Algebra", 3, "Dr. Gauss"],
@@ -134,8 +141,6 @@ if (studentCount.count === 0) {
     ["PHY102", "Physics II", 3, "Dr. Einstein"],
     ["CHE101", "Chemistry", 3, "Dr. Curie"],
     ["STA201", "Statistics and Probability", 3, "Dr. Bayes"],
-
-    // Humanities & Business
     ["ENG101", "English Composition", 3, "Prof. Shakespeare"],
     ["ENG102", "Public Speaking", 3, "Prof. King"],
     ["HIS101", "World History", 3, "Prof. Herodotus"],
@@ -182,10 +187,8 @@ if (studentCount.count === 0) {
   ];
 
   baseCourses.forEach((c, idx) => {
-    // Pick random room/time
     const room = rooms[idx % rooms.length];
     const time = times[idx % times.length];
-
     const result = insertCourse.run(
       c[0],
       c[1],
@@ -200,22 +203,31 @@ if (studentCount.count === 0) {
     allCourseIds.push({ id: result.lastInsertRowid, credits: c[2] });
   });
 
-  // C. Semesters & Grades
-  const semesters = [
-    "Fall-2025",
-    "Summer-2025",
-    "Spring-2025",
-    "Fall-2024",
-    "Summer-2024",
-    "Spring-2024",
-    "Fall-2023",
-    "Summer-2023",
-    "Spring-2023",
-    "Fall-2022",
-    "Summer-2022",
-    "Spring-2022",
+  // C. Dynamic Semesters & Advisors
+
+  // Helper to generate semester list from Start Year to Current
+  function generateSemesters(startYear, endYear) {
+    const seasons = ["Spring", "Summer", "Fall"];
+    let sems = [];
+    for (let y = startYear; y <= endYear; y++) {
+      seasons.forEach((s) => sems.push(`${s}-${y}`));
+    }
+    return sems;
+  }
+  const allSemesters = generateSemesters(2021, 2025); // Covers historic range
+
+  // List of Advisors
+  const advisors = [
+    { name: "Dr. Anisur Rahman", email: "anis@san.edu" },
+    { name: "Ms. Fouzie Risdin", email: "fouzie@san.edu" },
+    { name: "Dr. James Lee", email: "james@san.edu" },
+    { name: "Dr. Sarah Wilson", email: "sarah@san.edu" },
+    { name: "Dr. Emily Chen", email: "emily@san.edu" },
+    { name: "Prof. Ahmed Adnan", email: "adnan@san.edu" },
+    { name: "Dr. Robert Brown", email: "robert@san.edu" },
+    { name: "Dr. Alan Turing", email: "alan@san.edu" },
   ];
-  // Weighted grades to make GPAs realistic (more Bs and As than Ds)
+
   const gradesList = [
     "A",
     "A",
@@ -229,77 +241,100 @@ if (studentCount.count === 0) {
     "C",
     "D",
   ];
+  const bloodGroups = ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"];
 
-  // D. Insert Students with History
   const insertStudent = db.prepare(`
-    INSERT INTO students (student_id, password, name, email, department, year, semester, gpa) 
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO students (
+      student_id, unique_id, password, name, email, phone, program, department, 
+      admitted_semester, year, semester, dob, blood_group, nid, marital_status, 
+      present_address, permanent_address, advisor_name, advisor_email, gpa
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
-  const insertGrade = db.prepare(`
-    INSERT INTO grades (student_id, course_id, grade, semester) VALUES (?, ?, ?, ?)
-  `);
-
-  const insertEnrollment = db.prepare(`
-    INSERT INTO student_courses (student_id, course_id, status) VALUES (?, ?, ?)
-  `);
+  const insertGrade = db.prepare(
+    `INSERT INTO grades (student_id, course_id, grade, semester) VALUES (?, ?, ?, ?)`
+  );
+  const insertEnrollment = db.prepare(
+    `INSERT INTO student_courses (student_id, course_id, status) VALUES (?, ?, ?)`
+  );
 
   // Create 50 Students
   for (let i = 1; i <= 50; i++) {
     const sId = `SAN2025${i.toString().padStart(3, "0")}`;
-    // Distribute years: roughly equal distribution
+    const uniqueId = `U-${100000 + i}`;
+
+    // Distribute years: 1 to 4
     const year = (i % 4) + 1;
+
+    // Calculate Admitted Semester based on year
+    // Current is Fall-2025.
+    // Year 1 Admitted ~ Spring 2025. Year 4 Admitted ~ Spring 2022.
+    // Logic: Go back (Year-1)*3 semesters from end of list
+    let admittedIndex = allSemesters.length - 1 - (year - 1) * 3 - 2;
+    if (admittedIndex < 0) admittedIndex = 0;
+    const admittedSem = allSemesters[admittedIndex];
+
+    // Assign Random Advisor
+    const advisor = advisors[Math.floor(Math.random() * advisors.length)];
 
     const result = insertStudent.run(
       sId,
+      uniqueId,
       "password123",
       `Student Name ${i}`,
       `s${i}@san.edu`,
+      `+88017000000${i}`,
+      "B.Sc. in Computer Science",
       "CSE",
+      admittedSem,
       year,
       "Fall-2025",
+      "2001-01-01",
+      bloodGroups[i % 8],
+      `1234567890${i}`,
+      "Single",
+      "House 123, Road 5, Dhaka",
+      "Village Home, District, Division",
+      advisor.name,
+      advisor.email,
       0.0
     );
     const studentDbId = result.lastInsertRowid;
 
-    // Calculate past semesters
-    // Year 1: 0 past. Year 2: 3 past. Year 3: 6 past. Year 4: 9 past.
-    const pastSemestersCount = (year - 1) * 3;
-
-    // Shuffle courses for each student so they have different transcripts
+    // Shuffle courses
     let shuffledCourses = [...allCourseIds].sort(() => 0.5 - Math.random());
     let courseIndex = 0;
 
-    // 1. Insert History (Past Semesters)
-    for (let s = 0; s < pastSemestersCount; s++) {
-      const semName = semesters[s + 1]; // +1 to skip current Fall-2025
+    // Loop from Admitted Semester -> Previous Semester (Fall-2025 is current)
+    const currentSemIndex = allSemesters.indexOf("Fall-2025");
 
+    for (let s = admittedIndex; s < currentSemIndex; s++) {
+      const semName = allSemesters[s];
       let currentSemCredits = 0;
-      // Min 9 credits, Max 15 credits
+
+      // Assign 9-15 credits per past semester
       while (currentSemCredits < 9 && courseIndex < shuffledCourses.length) {
         const course = shuffledCourses[courseIndex++];
-
         const grade = gradesList[Math.floor(Math.random() * gradesList.length)];
+
         insertGrade.run(studentDbId, course.id, grade, semName);
         insertEnrollment.run(studentDbId, course.id, "completed");
-
         currentSemCredits += course.credits;
 
-        // Randomly decide to add another course if < 15 credits
+        // Chance for extra course
         if (
           currentSemCredits < 15 &&
           Math.random() > 0.4 &&
           courseIndex < shuffledCourses.length
         ) {
-          // continue loop
+          // continue
         } else if (currentSemCredits >= 9) {
-          break; // Stop for this semester
+          break;
         }
       }
     }
 
-    // 2. Insert Current Semester (Fall-2025)
-    // Current courses have no grades yet
+    // Enroll in Current Semester (Fall-2025)
     let currentCredits = 0;
     while (currentCredits < 9 && courseIndex < shuffledCourses.length) {
       const course = shuffledCourses[courseIndex++];
@@ -320,7 +355,7 @@ if (studentCount.count === 0) {
   ).run();
 
   console.log(
-    "Database seeded successfully with 50 students, diverse courses, and full history."
+    "Database seeded successfully with dynamic semesters, unique advisors, and history."
   );
 }
 
