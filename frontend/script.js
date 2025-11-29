@@ -22,9 +22,8 @@ let currentEnrolledCredits = 0; // Track credits for validation
 // --- HISTORY MANAGEMENT ---
 window.addEventListener("popstate", (event) => {
   if (event.state && event.state.view) {
-    switchView(event.state.view, null, false); // Don't push state on pop
+    switchView(event.state.view, null, false);
   } else {
-    // Default to home if state is empty (e.g. initial landing)
     if (currentStudent) switchView("home", null, false);
   }
 });
@@ -37,8 +36,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const logoutBtn = document.getElementById("logoutBtn");
   if (logoutBtn) logoutBtn.addEventListener("click", logout);
 
-  // Navigation Buttons: Exclude the drop button to prevent event hijacking
-  const navBtns = document.querySelectorAll(".nav-btn:not(#dropSemesterBtn)");
+  const navBtns = document.querySelectorAll(".nav-btn");
   navBtns.forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.stopImmediatePropagation();
@@ -173,7 +171,10 @@ async function loadHomeData() {
       0
     );
 
-    document.getElementById("coursesCount").innerText = currentCourses.length;
+    document.getElementById(
+      "coursesCount"
+    ).innerHTML = `${currentCourses.length} <div style="font-size:0.6em; margin-top:5px; font-weight:normal;">(${currentEnrolledCredits} Credits)</div>`;
+
     document.getElementById("creditsCount").innerText = completedCourses.reduce(
       (sum, c) => sum + (c.credits || 0),
       0
@@ -189,23 +190,17 @@ async function loadHomeData() {
     ).size;
 
     const listContainer = document.getElementById("coursesList");
+    const dropBtn = document.getElementById("dropSemesterBtn");
 
-    if (currentCourses.length > 0) {
-      listContainer.innerHTML = currentCourses
-        .map(
-          (c) => `
-            <div style="padding:15px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
-                <div>
-                    <div style="font-weight:700; color:#374151;">${c.code} - ${c.name}</div>
-                    <div style="font-size:0.85em; color:#6b7280; margin-top:2px;">${c.schedule} • ${c.room_number}</div>
-                </div>
-                <span style="background:#e0e7ff; color:#4338ca; padding:4px 10px; border-radius:6px; font-size:0.8em; font-weight:600;">${c.credits} Cr</span>
-            </div>
-        `
-        )
-        .join("");
-    } else if (droppedCourses.length > 0) {
-      // SHOW DROPPED SEMESTER MESSAGE
+    if (droppedCourses.length > 0) {
+      // Semester is already dropped
+      if (dropBtn) {
+        dropBtn.disabled = true;
+        dropBtn.style.opacity = "0.5";
+        dropBtn.style.cursor = "not-allowed";
+        dropBtn.title = "Semester already dropped";
+      }
+
       listContainer.innerHTML = `
             <div style="text-align:center; padding:30px; background:#fff1f2; border:1px solid #fda4af; border-radius:10px; color:#9f1239;">
                 <i class="fas fa-ban" style="font-size:2em; margin-bottom:10px;"></i>
@@ -214,8 +209,32 @@ async function loadHomeData() {
             </div>
         `;
     } else {
-      listContainer.innerHTML =
-        '<p style="color:#666; font-style:italic; padding:10px;">No enrolled courses for this semester.</p>';
+      // Semester is active
+      if (dropBtn) {
+        dropBtn.disabled = false;
+        dropBtn.style.opacity = "1";
+        dropBtn.style.cursor = "pointer";
+        dropBtn.title = "Drop entire semester";
+      }
+
+      if (currentCourses.length > 0) {
+        listContainer.innerHTML = currentCourses
+          .map(
+            (c) => `
+                <div style="padding:15px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div style="font-weight:700; color:#374151;">${c.code} - ${c.name}</div>
+                        <div style="font-size:0.85em; color:#6b7280; margin-top:2px;">${c.schedule} • ${c.room_number}</div>
+                    </div>
+                    <span style="background:#e0e7ff; color:#4338ca; padding:4px 10px; border-radius:6px; font-size:0.8em; font-weight:600;">${c.credits} Cr</span>
+                </div>
+            `
+          )
+          .join("");
+      } else {
+        listContainer.innerHTML =
+          '<p style="color:#666; font-style:italic; padding:10px;">No enrolled courses for this semester.</p>';
+      }
     }
   } catch (error) {
     console.error(error);
@@ -250,7 +269,8 @@ async function loadAdvisingCatalog() {
                 </div>
              `;
         // Also clear the slip view if needed or disable confirm
-        document.getElementById("confirmSlipBtn").disabled = true;
+        const confirmBtn = document.getElementById("confirmSlipBtn");
+        if (confirmBtn) confirmBtn.disabled = true;
       }
       return;
     } else {
