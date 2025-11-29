@@ -22,8 +22,9 @@ let currentEnrolledCredits = 0; // Track credits for validation
 // --- HISTORY MANAGEMENT ---
 window.addEventListener("popstate", (event) => {
   if (event.state && event.state.view) {
-    switchView(event.state.view, null, false);
+    switchView(event.state.view, null, false); // Don't push state on pop
   } else {
+    // Default to home if state is empty (e.g. initial landing)
     if (currentStudent) switchView("home", null, false);
   }
 });
@@ -233,6 +234,30 @@ async function loadAdvisingCatalog() {
 
     const allCatalog = await catRes.json();
     const myHistory = await myRes.json();
+
+    // --- CHECK FOR DROPPED SEMESTER ---
+    const droppedSem = myHistory.some(
+      (c) => c.status === "dropped" && c.semester === "Fall-2025"
+    );
+    if (droppedSem) {
+      const container = document.getElementById("advisingCatalog");
+      if (container) {
+        container.innerHTML = `
+                <div style="text-align:center; padding:40px; color:#9f1239; background:#fff1f2; border-radius:10px; border:1px solid #fda4af;">
+                    <i class="fas fa-ban" style="font-size:3em; margin-bottom:15px;"></i>
+                    <h3 style="margin-top:0;">Advising Disabled</h3>
+                    <p>You have dropped the current semester. <br>You cannot register for new courses at this time.</p>
+                </div>
+             `;
+        // Also clear the slip view if needed or disable confirm
+        document.getElementById("confirmSlipBtn").disabled = true;
+      }
+      return;
+    } else {
+      // Re-enable just in case
+      const btn = document.getElementById("confirmSlipBtn");
+      if (btn) btn.disabled = false;
+    }
 
     // 2. Identify Lists
     const enrolledCodes = myHistory
