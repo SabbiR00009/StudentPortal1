@@ -160,7 +160,7 @@ app.get("/api/advising/period", (req, res) => {
   }
 });
 
-// Submit advising request (Old route - kept intact)
+// Submit advising request (Individual request)
 app.post("/api/advising/request", (req, res) => {
   try {
     const { studentId, courseId, semester } = req.body;
@@ -197,7 +197,7 @@ app.post("/api/advising/request", (req, res) => {
   }
 });
 
-// --- NEW ROUTE: Confirm Advising Slip (Real-Time Registration) ---
+// --- CONFIRM ADVISING SLIP (Real-Time Transaction) ---
 app.post("/api/advising/confirm", (req, res) => {
   const { studentId, courseIds } = req.body;
 
@@ -218,6 +218,7 @@ app.post("/api/advising/confirm", (req, res) => {
           "SELECT enrolled_count, max_students, code FROM courses WHERE id = ?"
         )
         .get(courseId);
+
       if (course.enrolled_count >= course.max_students) {
         throw new Error(`Course ${course.code} is FULL. Registration failed.`);
       }
@@ -226,6 +227,7 @@ app.post("/api/advising/confirm", (req, res) => {
       db.prepare(
         "INSERT INTO student_courses (student_id, course_id, status) VALUES (?, ?, 'enrolled')"
       ).run(studentId, courseId);
+
       db.prepare(
         "UPDATE courses SET enrolled_count = enrolled_count + 1 WHERE id = ?"
       ).run(courseId);
@@ -279,6 +281,7 @@ app.delete("/api/advising/request/:id", (req, res) => {
 
 // ============= ADMIN ROUTES =============
 
+// Get all students
 app.get("/api/admin/students", (req, res) => {
   try {
     const students = db
@@ -292,6 +295,7 @@ app.get("/api/admin/students", (req, res) => {
   }
 });
 
+// Get all advising requests
 app.get("/api/admin/advising-requests", (req, res) => {
   try {
     const requests = db
@@ -307,6 +311,46 @@ app.get("/api/admin/advising-requests", (req, res) => {
       )
       .all();
     res.json(requests);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Upload/Update Grades
+app.post("/api/admin/grades", (req, res) => {
+  try {
+    const { studentId, courseCode, grade, semester } = req.body;
+
+    // 1. Find Student
+    const student = db
+      .prepare("SELECT id FROM students WHERE student_id = ?")
+      .get(studentId);
+    if (!student) return res.status(404).json({ error: "Student not found" });
+
+    // 2. Find Course
+    const course = db
+      .prepare("SELECT id FROM courses WHERE code = ?")
+      .get(courseCode);
+    if (!course) return res.status(404).json({ error: "Course not found" });
+
+    // 3. Upsert Grade
+    const existingGrade = db
+      .prepare("SELECT id FROM grades WHERE student_id = ? AND course_id = ?")
+      .get(student.id, course.id);
+
+    if (existingGrade) {
+      db.prepare("UPDATE grades SET grade = ?, semester = ? WHERE id = ?").run(
+        grade,
+        semester,
+        existingGrade.id
+      );
+    } else {
+      db.prepare(
+        "INSERT INTO grades (student_id, course_id, grade, semester) VALUES (?, ?, ?, ?)"
+      ).run(student.id, course.id, grade, semester);
+    }
+
+    res.json({ success: true, message: "Grade updated successfully" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -394,6 +438,51 @@ app.delete("/api/admin/courses/:id", (req, res) => {
     if (result.changes === 0)
       return res.status(404).json({ error: "Course not found" });
     res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// --- FEATURE: DROP INDIVIDUAL COURSE (UPDATED RULE: Min 9 Credits) ---
+app.post("/api/students/drop-course", (req, res) => {
+  try {
+    const { studentId, courseId } = req.body;
+
+    // 1. Calculate Current Credits
+    const courses = db
+      .prepare(
+        "SELECT c.credits FROM student_courses sc JOIN courses c ON sc.course_id = c.id WHERE sc.student_id = ? AND sc.status = 'enrolled'"
+      )
+      .all(studentId);
+
+    const totalCredits = courses.reduce((sum, c) => sum + c.credits, 0);
+
+    // 2. Get credits of the course to be dropped
+    const courseToDrop = db
+      .prepare("SELECT credits FROM courses WHERE id = ?")
+      .get(courseId);
+
+    if (!courseToDrop)
+      return res.status(404).json({ error: "Course not found." });
+
+    // 3. Validate Rule: Cannot drop if remaining credits < 9
+    if (totalCredits - courseToDrop.credits < 9) {
+      return res
+        .status(400)
+        .json({
+          error: `Cannot drop. You must maintain at least 9 credits (Current: ${totalCredits}).`,
+        });
+    }
+
+    // 4. Process Drop
+    db.prepare(
+      "UPDATE student_courses SET status = 'dropped' WHERE student_id = ? AND course_id = ? AND status = 'enrolled'"
+    ).run(studentId, courseId);
+    db.prepare(
+      "UPDATE courses SET enrolled_count = enrolled_count - 1 WHERE id = ?"
+    ).run(courseId);
+
+    res.json({ success: true, message: "Course dropped successfully." });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SAN University - Student Portal</title>
+    <!-- CORRECTED LINK: styles.css (plural) -->
     <link rel="stylesheet" href="styles.css">
-    <!-- FontAwesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -45,7 +45,7 @@
                     <span id="userName" style="font-weight:600; font-size:0.9em;">Student</span>
                     <span style="font-size:0.75em; color:#666;" id="userIdDisplay">ID: ...</span>
                 </div>
-                <button class="logout-btn" onclick="logout()">Logout</button>
+                <button class="logout-btn" id="logoutBtn">Logout</button>
             </div>
         </div>
 
@@ -60,20 +60,11 @@
                         <h2 id="welcomeMessage">Welcome back!</h2>
                         <p>Here is your academic performance overview.</p>
                     </div>
-                    <!-- STATS GRID WITH CLICKABLE CARDS -->
                     <div class="stats-grid">
-                        <div class="stat-card" onclick="switchView('grades', null, true)">
-                            <h3 id="gpaDisplay">0.00</h3><p>Current CGPA</p>
-                        </div>
-                        <div class="stat-card" onclick="switchView('schedule', null, true)">
-                            <h3 id="coursesCount">0</h3><p>Enrolled Courses</p>
-                        </div>
-                        <div class="stat-card" onclick="switchView('grades', null, true)">
-                            <h3 id="creditsCount">0</h3><p>Completed Credits</p>
-                        </div>
-                        <div class="stat-card" onclick="switchView('grades', null, true)">
-                            <h3 id="semestersCount">0</h3><p>Semesters Done</p>
-                        </div>
+                        <div class="stat-card" data-target="grades"><h3 id="gpaDisplay">0.00</h3><p>Current CGPA</p></div>
+                        <div class="stat-card" data-target="schedule"><h3 id="coursesCount">0</h3><p>Enrolled Courses</p></div>
+                        <div class="stat-card" data-target="grades"><h3 id="creditsCount">0</h3><p>Completed Credits</p></div>
+                        <div class="stat-card" data-target="grades"><h3 id="semestersCount">0</h3><p>Semesters Done</p></div>
                     </div>
                     <div class="card">
                         <h3>Current Semester Schedule</h3>
@@ -83,31 +74,58 @@
 
                 <!-- 2. SCHEDULE -->
                 <div id="view-schedule" class="view-section">
-                    <div class="card" style="background:transparent; box-shadow:none; border:none; padding:0;">
-                        <div style="margin-bottom:20px;">
-                            <h2 style="color:#1f2937; margin:0;">Class Schedule & History</h2>
-                        </div>
+                    <div class="card">
+                        <h3>Class Schedule & History</h3>
                         <div id="scheduleTableContainer">Loading...</div>
                     </div>
                 </div>
 
                 <!-- 3. GRADE REPORT -->
                 <div id="view-grades" class="view-section">
-                    <div class="card" style="background:transparent; box-shadow:none; border:none; padding:0;">
+                    <div class="card">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                            <h2 style="color:#1f2937; margin:0;">Academic Grade Report</h2>
-                            <div style="background:white; padding:10px 20px; border-radius:12px; box-shadow:0 4px 6px rgba(0,0,0,0.05); font-weight:800; color:#4F46E5; border:1px solid #e5e7eb;" id="totalCgpaBadge">CGPA: ...</div>
+                            <h3 style="margin:0;">Academic Grade Report</h3>
+                            <div class="cgpa-badge" id="totalCgpaBadge">CGPA: ...</div>
                         </div>
                         <div id="gradesContainer">Loading...</div>
                     </div>
                 </div>
 
-                <!-- 4. ADVISING -->
+                <!-- 4. ADVISING (UPDATED: Complex 2-Column Layout) -->
                 <div id="view-advising" class="view-section">
-                    <div class="card">
-                        <h3>Course Advising</h3>
-                        <p style="margin-bottom:15px; color:#666;">Available courses for Next Semester:</p>
-                        <div id="advisingListContainer">Loading...</div>
+                    <div class="advising-layout">
+                        <!-- Left: Course Catalog -->
+                        <div class="card">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
+                                <h3 style="margin:0; border:none;">Fall-2025 Catalog</h3>
+                                <span class="live-badge"><i class="fas fa-circle"></i> LIVE SEATS</span>
+                            </div>
+                            <div id="advisingCatalog" class="catalog-list">Loading courses...</div>
+                        </div>
+
+                        <!-- Right: Advising Slip (Cart) -->
+                        <div class="card slip-card">
+                            <div style="background:#f8fafc; padding:15px; border-bottom:1px solid #e2e8f0;">
+                                <h3 style="margin:0; border:none; font-size:1.1em;">Advising Slip</h3>
+                            </div>
+                            
+                            <div id="advisingSlipList" class="slip-list">
+                                <div class="empty-state">
+                                    <i class="fas fa-basket-shopping"></i>
+                                    <p>Select courses from the catalog to add them here.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="slip-footer">
+                                <div class="slip-summary">
+                                    <span>Total Credits:</span>
+                                    <span id="slipTotalCredits" style="font-weight:bold; color:#4F46E5;">0</span>
+                                </div>
+                                <button id="confirmSlipBtn" class="confirm-btn">
+                                    Confirm Registration <i class="fas fa-arrow-right"></i>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -123,25 +141,26 @@
             <!-- RIGHT: MENU -->
             <div class="side-panel">
                 <div class="card">
-                    <h3 style="font-size:0.9em; color:#9ca3af; border:none; margin-bottom:15px; letter-spacing:1px;">MAIN MENU</h3>
+                    <h3 style="font-size:0.9em; color:#9ca3af; margin-bottom:15px; letter-spacing:1px; text-transform:uppercase;">Menu</h3>
                     <div class="nav-menu">
-                        <button class="nav-btn active" id="btn-home" onclick="switchView('home', this, true)">Home</button>
-                        <button class="nav-btn" id="btn-schedule" onclick="switchView('schedule', this, true)">Class Schedule</button>
-                        <button class="nav-btn" id="btn-grades" onclick="switchView('grades', this, true)">Grade Report</button>
-                        <button class="nav-btn" id="btn-advising" onclick="switchView('advising', this, true)">Advising</button>
-                        <button class="nav-btn" id="btn-financials" onclick="switchView('financials', this, true)">Financials</button>
-                        <button class="nav-btn danger" id="btn-drop" onclick="dropSemester()">Drop Semester</button>
+                        <button class="nav-btn active" data-view="home"><i class="fas fa-home"></i> Home</button>
+                        <button class="nav-btn" data-view="schedule"><i class="fas fa-calendar-alt"></i> Class Schedule</button>
+                        <button class="nav-btn" data-view="grades"><i class="fas fa-graduation-cap"></i> Grade Report</button>
+                        <button class="nav-btn" data-view="advising"><i class="fas fa-edit"></i> Advising Portal</button>
+                        <button class="nav-btn" data-view="financials"><i class="fas fa-file-invoice-dollar"></i> Financials</button>
+                        <button class="nav-btn danger" id="dropSemesterBtn"><i class="fas fa-trash-alt"></i> Drop Semester</button>
                     </div>
                 </div>
 
                 <div class="card">
-                    <h3 style="margin-bottom:15px;">Announcements</h3>
+                    <h3>Announcements</h3>
                     <div id="announcementsList">Loading...</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="script.js"> </script>
+    <!-- Scripts -->
+    <script src="script.js"></script>
 </body>
 </html>
