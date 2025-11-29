@@ -1,7 +1,7 @@
-const Database = require('better-sqlite3');
-const db = new Database('san_university.db');
+const Database = require("better-sqlite3");
+const db = new Database("san_university.db");
 
-// Create tables
+// --- 1. CREATE TABLES ---
 db.exec(`
   CREATE TABLE IF NOT EXISTS students (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -88,76 +88,240 @@ db.exec(`
   );
 `);
 
-// Insert sample data (only if tables are empty)
-const studentCount = db.prepare('SELECT COUNT(*) as count FROM students').get();
+// --- 2. SEED DATA ---
+const studentCount = db.prepare("SELECT COUNT(*) as count FROM students").get();
 
 if (studentCount.count === 0) {
-  // Insert admin account
-  db.prepare(`
-    INSERT INTO admins (email, password, name) VALUES
-    ('sabbir.hossain.28678@gmail.com', 'sabbir009', 'Admin Sabbir')
-  `).run();
+  console.log(
+    "Seeding database with expanded dataset (50 students + full catalog)..."
+  );
 
-  // Sample students
-  db.prepare(`
-    INSERT INTO students (student_id, password, name, email, department, year, semester, gpa) VALUES
-    ('SAN2024001', 'password123', 'John Doe', 'john.doe@san.edu', 'Computer Science', 2, 'Fall-2025', 3.8),
-    ('SAN2024002', 'password123', 'Jane Smith', 'jane.smith@san.edu', 'Computer Science', 3, 'Fall-2025', 3.9),
-    ('SAN2024003', 'password123', 'Mike Johnson', 'mike.j@san.edu', 'Computer Science', 1, 'Fall-2025', 3.5),
-    ('SAN2024004', 'password123', 'Sarah Williams', 'sarah.w@san.edu', 'Computer Science', 2, 'Fall-2025', 3.7)
-  `).run();
+  // A. Insert Admin
+  db.prepare(
+    `INSERT INTO admins (email, password, name) VALUES ('sabbir.hossain.28678@gmail.com', 'sabbir009', 'Admin Sabbir')`
+  ).run();
 
-  // Sample courses (similar to your image)
-  db.prepare(`
-    INSERT INTO courses (code, name, credits, instructor, instructor_email, schedule, room_number, section, semester) VALUES
-    ('CSE360', 'Software Engineering', 3, 'Ms. Fouzie Risdin', 'fouzie.risdin@ewubd.edu', 'MW 3:10PM-4:40PM', 'AB3-401', 4, 'Fall-2025'),
-    ('CSE405', 'Computer Security', 4, 'Dr. Anisur Rahman', 'anis@ewubd.edu', 'ST 8:30AM-10:00AM', '221', 1, 'Fall-2025'),
-    ('CSE405L', 'Computer Security Lab', 4, 'Dr. Anisur Rahman', 'anis@ewubd.edu', 'R 8:00AM-10:00AM', '450 (Networking Lab)', 1, 'Fall-2025'),
-    ('CSE412', 'Software Engineering Project', 4, 'Nishat Tasnim Niloy', 'nishat.niloy@ewubd.edu', 'S 11:50AM-1:20PM', 'AB2-402', 3, 'Fall-2025'),
-    ('CSE412L', 'Software Engineering Lab', 4, 'Nishat Tasnim Niloy', 'nishat.niloy@ewubd.edu', 'W 10:10AM-12:10PM', '630 (Software Engineering Lab)', 3, 'Fall-2025'),
-    ('CSE495', 'Thesis/Project', 3, 'Ahmed Adnan', 'ahmed.adnan@ewubd.edu', 'S 4:50PM-6:20PM', 'AB3-1002', 4, 'Fall-2025'),
-    ('CSE350', 'Digital System Design', 4, 'Nahid Hasan', 'nahid.hasan@ewubd.edu', 'ST 4:50PM-6:20PM', 'FUB-302', 3, 'Fall-2025'),
-    ('CSE350L', 'Digital System Design Lab', 4, 'Nahid Hasan', 'nahid.hasan@ewubd.edu', 'W 1:30PM-3:00PM', '372 (SEIP Lab)', 3, 'Fall-2025'),
-    ('CSE201', 'Data Structures', 4, 'Dr. James Lee', 'james.lee@san.edu', 'TTh 11:00AM-12:30PM', 'AB2-301', 2, 'Fall-2025'),
-    ('MATH301', 'Numerical Methods', 3, 'Dr. Emily Chen', 'emily.chen@san.edu', 'MWF 2:00PM-3:00PM', 'AB1-201', 1, 'Fall-2025'),
-    ('CSE320', 'Database Systems', 3, 'Dr. Robert Brown', 'robert.brown@san.edu', 'MW 1:00PM-2:30PM', 'AB3-501', 2, 'Fall-2025'),
-    ('CSE401', 'Artificial Intelligence', 3, 'Dr. Sarah Wilson', 'sarah.wilson@san.edu', 'TTh 3:00PM-4:30PM', 'AB2-601', 1, 'Fall-2025')
-  `).run();
+  // B. Generate Expanded Course Catalog
+  const baseCourses = [
+    // Computer Science Core
+    ["CSE101", "Intro to Computer Science", 3, "Dr. Ada Lovelace"],
+    ["CSE102", "Programming Language I", 3, "Dr. Grace Hopper"],
+    ["CSE203", "Data Structures", 3, "Dr. James Lee"],
+    ["CSE204", "Algorithms", 3, "Dr. Alan Turing"],
+    ["CSE305", "Database Systems", 3, "Dr. Edgar Codd"],
+    ["CSE306", "Operating Systems", 3, "Dr. Linus Torvalds"],
+    ["CSE307", "Computer Architecture", 3, "Dr. Von Neumann"],
+    ["CSE360", "Software Engineering", 3, "Ms. Fouzie Risdin"],
+    ["CSE401", "Artificial Intelligence", 3, "Dr. Sarah Wilson"],
+    ["CSE405", "Computer Security", 4, "Dr. Anisur Rahman"],
+    ["CSE405L", "Computer Security Lab", 4, "Dr. Anisur Rahman"],
+    ["CSE412", "SE Project", 4, "Nishat Niloy"],
+    ["CSE412L", "SE Lab", 4, "Nishat Niloy"],
+    ["CSE420", "Compiler Design", 3, "Dr. Alfred Aho"],
+    ["CSE421", "Computer Graphics", 3, "Dr. John Carmack"],
+    ["CSE422", "Machine Learning", 3, "Dr. Andrew Ng"],
+    ["CSE423", "Cloud Computing", 3, "Dr. Werner Vogels"],
+    ["CSE495", "Thesis/Project", 3, "Ahmed Adnan"],
+    ["CSE350", "Digital System Design", 4, "Nahid Hasan"],
+    ["CSE350L", "DSD Lab", 4, "Nahid Hasan"],
 
-  // Enroll students in some courses
-  db.prepare(`
-    INSERT INTO student_courses (student_id, course_id, status) VALUES
-    (1, 1, 'enrolled'), (1, 2, 'enrolled'), (1, 3, 'enrolled'),
-    (2, 4, 'enrolled'), (2, 5, 'enrolled'),
-    (3, 6, 'enrolled'), (3, 7, 'enrolled')
-  `).run();
+    // Math & Science
+    ["MAT101", "Calculus I", 3, "Dr. Euler"],
+    ["MAT102", "Calculus II", 3, "Dr. Leibniz"],
+    ["MAT203", "Linear Algebra", 3, "Dr. Gauss"],
+    ["MAT301", "Numerical Methods", 3, "Dr. Emily Chen"],
+    ["PHY101", "Physics I", 3, "Dr. Newton"],
+    ["PHY102", "Physics II", 3, "Dr. Einstein"],
+    ["CHE101", "Chemistry", 3, "Dr. Curie"],
+    ["STA201", "Statistics and Probability", 3, "Dr. Bayes"],
 
-  // Sample grades
-  db.prepare(`
-    INSERT INTO grades (student_id, course_id, grade, semester) VALUES
-    (1, 1, 'A', 'Spring-2025'),
-    (1, 2, 'A-', 'Spring-2025'),
-    (2, 4, 'B+', 'Spring-2025'),
-    (3, 6, 'B', 'Spring-2025')
-  `).run();
+    // Humanities & Business
+    ["ENG101", "English Composition", 3, "Prof. Shakespeare"],
+    ["ENG102", "Public Speaking", 3, "Prof. King"],
+    ["HIS101", "World History", 3, "Prof. Herodotus"],
+    ["PHI101", "Intro to Philosophy", 3, "Dr. Socrates"],
+    ["PSY101", "Intro to Psychology", 3, "Dr. Freud"],
+    ["SOC101", "Intro to Sociology", 3, "Dr. Durkheim"],
+    ["ECO101", "Microeconomics", 3, "Dr. Keynes"],
+    ["ECO102", "Macroeconomics", 3, "Dr. Smith"],
+    ["ACT201", "Financial Accounting", 3, "Prof. Ledger"],
+    ["MGT301", "Principles of Management", 3, "Dr. Drucker"],
+    ["MKT301", "Principles of Marketing", 3, "Dr. Kotler"],
+    ["BIO101", "Intro to Biology", 3, "Dr. Darwin"],
+    ["ENV101", "Environmental Science", 3, "Dr. Goodall"],
+  ];
 
-  // Sample announcements
-  db.prepare(`
-    INSERT INTO announcements (title, content, category) VALUES
-    ('Advising Period Opens', 'Course advising for Fall-2025 semester is now open. Please complete your course selection by December 15th.', 'Academic'),
-    ('Final Exam Schedule Released', 'The final exam schedule has been posted. Check your student portal for details.', 'Academic'),
-    ('Career Fair - February 20th', 'Join us for the annual career fair. Over 100 companies will be attending!', 'Events'),
-    ('Library Extended Hours', 'The library will be open 24/7 during exam week.', 'Facilities'),
-    ('New Lab Equipment', 'Software Engineering Lab has been upgraded with new workstations.', 'Technology')
-  `).run();
+  const insertCourse = db.prepare(`
+    INSERT INTO courses (code, name, credits, instructor, instructor_email, schedule, room_number, section, semester) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
 
-  // Create active advising period
-  db.prepare(`
-    INSERT INTO advising_periods (semester, start_date, end_date, is_active) VALUES
-    ('Fall-2025', '2025-11-20', '2025-12-15', 1)
-  `).run();
+  // Insert courses and track IDs
+  const allCourseIds = [];
+  const rooms = [
+    "AB3-401",
+    "SCI-202",
+    "LB-101",
+    "FUB-302",
+    "221",
+    "450",
+    "630",
+    "AB1-201",
+  ];
+  const times = [
+    "MW 8:00-9:30",
+    "MW 9:30-11:00",
+    "MW 11:00-12:30",
+    "MW 1:00-2:30",
+    "MW 2:30-4:00",
+    "ST 8:00-9:30",
+    "ST 9:30-11:00",
+    "ST 11:00-12:30",
+    "ST 1:00-2:30",
+    "ST 2:30-4:00",
+  ];
 
-  console.log('Sample data inserted successfully!');
+  baseCourses.forEach((c, idx) => {
+    // Pick random room/time
+    const room = rooms[idx % rooms.length];
+    const time = times[idx % times.length];
+
+    const result = insertCourse.run(
+      c[0],
+      c[1],
+      c[2],
+      c[3],
+      "faculty@san.edu",
+      time,
+      room,
+      1,
+      "Fall-2025"
+    );
+    allCourseIds.push({ id: result.lastInsertRowid, credits: c[2] });
+  });
+
+  // C. Semesters & Grades
+  const semesters = [
+    "Fall-2025",
+    "Summer-2025",
+    "Spring-2025",
+    "Fall-2024",
+    "Summer-2024",
+    "Spring-2024",
+    "Fall-2023",
+    "Summer-2023",
+    "Spring-2023",
+    "Fall-2022",
+    "Summer-2022",
+    "Spring-2022",
+  ];
+  // Weighted grades to make GPAs realistic (more Bs and As than Ds)
+  const gradesList = [
+    "A",
+    "A",
+    "A-",
+    "A-",
+    "B+",
+    "B+",
+    "B",
+    "B-",
+    "C+",
+    "C",
+    "D",
+  ];
+
+  // D. Insert Students with History
+  const insertStudent = db.prepare(`
+    INSERT INTO students (student_id, password, name, email, department, year, semester, gpa) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const insertGrade = db.prepare(`
+    INSERT INTO grades (student_id, course_id, grade, semester) VALUES (?, ?, ?, ?)
+  `);
+
+  const insertEnrollment = db.prepare(`
+    INSERT INTO student_courses (student_id, course_id, status) VALUES (?, ?, ?)
+  `);
+
+  // Create 50 Students
+  for (let i = 1; i <= 50; i++) {
+    const sId = `SAN2025${i.toString().padStart(3, "0")}`;
+    // Distribute years: roughly equal distribution
+    const year = (i % 4) + 1;
+
+    const result = insertStudent.run(
+      sId,
+      "password123",
+      `Student Name ${i}`,
+      `s${i}@san.edu`,
+      "CSE",
+      year,
+      "Fall-2025",
+      0.0
+    );
+    const studentDbId = result.lastInsertRowid;
+
+    // Calculate past semesters
+    // Year 1: 0 past. Year 2: 3 past. Year 3: 6 past. Year 4: 9 past.
+    const pastSemestersCount = (year - 1) * 3;
+
+    // Shuffle courses for each student so they have different transcripts
+    let shuffledCourses = [...allCourseIds].sort(() => 0.5 - Math.random());
+    let courseIndex = 0;
+
+    // 1. Insert History (Past Semesters)
+    for (let s = 0; s < pastSemestersCount; s++) {
+      const semName = semesters[s + 1]; // +1 to skip current Fall-2025
+
+      let currentSemCredits = 0;
+      // Min 9 credits, Max 15 credits
+      while (currentSemCredits < 9 && courseIndex < shuffledCourses.length) {
+        const course = shuffledCourses[courseIndex++];
+
+        const grade = gradesList[Math.floor(Math.random() * gradesList.length)];
+        insertGrade.run(studentDbId, course.id, grade, semName);
+        insertEnrollment.run(studentDbId, course.id, "completed");
+
+        currentSemCredits += course.credits;
+
+        // Randomly decide to add another course if < 15 credits
+        if (
+          currentSemCredits < 15 &&
+          Math.random() > 0.4 &&
+          courseIndex < shuffledCourses.length
+        ) {
+          // continue loop
+        } else if (currentSemCredits >= 9) {
+          break; // Stop for this semester
+        }
+      }
+    }
+
+    // 2. Insert Current Semester (Fall-2025)
+    // Current courses have no grades yet
+    let currentCredits = 0;
+    while (currentCredits < 9 && courseIndex < shuffledCourses.length) {
+      const course = shuffledCourses[courseIndex++];
+      insertEnrollment.run(studentDbId, course.id, "enrolled");
+      currentCredits += course.credits;
+    }
+  }
+
+  // E. Announcements
+  db.prepare(
+    `INSERT INTO announcements (title, content, category) VALUES ('Welcome Week', 'Welcome back to campus! Check your schedule.', 'General')`
+  ).run();
+  db.prepare(
+    `INSERT INTO announcements (title, content, category) VALUES ('Exam Schedule', 'Midterm schedules are now live.', 'Academic')`
+  ).run();
+  db.prepare(
+    `INSERT INTO announcements (title, content, category) VALUES ('Job Fair', 'Over 50 companies visiting next month.', 'Career')`
+  ).run();
+
+  console.log(
+    "Database seeded successfully with 50 students, diverse courses, and full history."
+  );
 }
 
 module.exports = db;
