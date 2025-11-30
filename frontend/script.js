@@ -248,7 +248,6 @@ async function loadHomeData() {
       currentCourses.length === 0 && droppedCourses.length > 0;
 
     if (isFullyDropped) {
-      // Semester is FULLY dropped
       if (dropBtn) {
         dropBtn.disabled = true;
         dropBtn.style.opacity = "0.5";
@@ -264,7 +263,6 @@ async function loadHomeData() {
             </div>
         `;
     } else {
-      // Semester is active
       if (dropBtn) {
         dropBtn.disabled = false;
         dropBtn.style.opacity = "1";
@@ -298,7 +296,6 @@ async function loadHomeData() {
 
 // --- ADVANCED ADVISING MODULE ---
 
-// --- ADVANCED ADVISING MODULE (FIXED) ---
 async function loadAdvisingCatalog() {
   try {
     const [catRes, myRes] = await Promise.all([
@@ -309,118 +306,106 @@ async function loadAdvisingCatalog() {
     const allCatalog = await catRes.json();
     const myHistory = await myRes.json();
 
-    // Case-insensitive helpers
-    const statusOf = (c) => (c.status || "").toString().toLowerCase();
-
     const enrolledCurrent = myHistory.filter(
-      (c) => statusOf(c) === "enrolled" && c.semester === "Fall-2025"
+      (c) => c.status === "enrolled" && c.semester === "Fall-2025"
     );
     const droppedCurrent = myHistory.filter(
-      (c) => statusOf(c) === "dropped" && c.semester === "Fall-2025"
+      (c) => c.status === "dropped" && c.semester === "Fall-2025"
     );
 
-    // If user dropped entire semester and has no enrolled courses -> disable advising
     const isFullyDropped =
       enrolledCurrent.length === 0 && droppedCurrent.length > 0;
 
-    const container = document.getElementById("advisingCatalog");
-    if (!container) return;
-
     if (isFullyDropped) {
-      container.innerHTML = `
-        <div style="text-align:center; padding:40px; color:#9f1239; background:#fff1f2; border-radius:10px; border:1px solid #fda4af;">
-          <i class="fas fa-ban" style="font-size:3em; margin-bottom:15px;"></i>
-          <h3 style="margin-top:0;">Advising Disabled</h3>
-          <p>You have dropped the current semester. <br>You cannot register for new courses at this time.</p>
-        </div>
-      `;
-      const confirmBtn = document.getElementById("confirmSlipBtn");
-      if (confirmBtn) confirmBtn.disabled = true;
+      const container = document.getElementById("advisingCatalog");
+      if (container) {
+        container.innerHTML = `
+                <div style="text-align:center; padding:40px; color:#9f1239; background:#fff1f2; border-radius:10px; border:1px solid #fda4af;">
+                    <i class="fas fa-ban" style="font-size:3em; margin-bottom:15px;"></i>
+                    <h3 style="margin-top:0;">Advising Disabled</h3>
+                    <p>You have dropped the current semester. <br>You cannot register for new courses at this time.</p>
+                </div>
+             `;
+        const confirmBtn = document.getElementById("confirmSlipBtn");
+        if (confirmBtn) confirmBtn.disabled = true;
+      }
       return;
     } else {
       const btn = document.getElementById("confirmSlipBtn");
       if (btn) btn.disabled = false;
     }
 
-    // Build code lists (case-insensitive matching on codes as provided)
-    const enrolledCodes = new Set(
-      myHistory
-        .filter((c) => statusOf(c) === "enrolled")
-        .map((c) => (c.code || "").toString())
-    );
+    // 2. Identify Lists
+    const enrolledCodes = myHistory
+      .filter((c) => c.status === "enrolled")
+      .map((c) => c.code);
 
-    // Only truly completed courses should be considered "completed"
-    const completedCodes = new Set(
-      myHistory
-        .filter((c) => statusOf(c) === "completed")
-        .map((c) => (c.code || "").toString())
-    );
+    // FIX 1: Codes of courses that are COMPLETED (Grade exists) -> These are retakeable.
+    const completedCodes = myHistory
+      .filter((c) => c.status === "completed")
+      .map((c) => c.code);
 
-    // Dropped history codes (kept separate if you want to annotate them later)
-    const droppedHistoryCodes = new Set(
-      myHistory
-        .filter((c) => statusOf(c) === "dropped")
-        .map((c) => (c.code || "").toString())
-    );
-
-    // Undone (Regular): NOT completed AND NOT currently enrolled
-    // This naturally includes dropped courses (dropped != completed)
+    // 3. Filter Logic
+    // Undone (Regular/Dropped): NOT COMPLETED and NOT ENROLLED.
+    // A dropped course is NOT 'completed', so it naturally falls here (which is what you want).
     const undoneCourses = allCatalog.filter(
-      (c) => !completedCodes.has((c.code || "").toString()) && !enrolledCodes.has((c.code || "").toString())
+      (c) => !completedCodes.includes(c.code) && !enrolledCodes.includes(c.code)
     );
 
-    // Retake: only truly completed courses that can be retaken (not currently enrolled)
+    // Retake: Is in COMPLETED codes AND Not currently enrolled.
     const retakeCourses = allCatalog.filter(
-      (c) => completedCodes.has((c.code || "").toString()) && !enrolledCodes.has((c.code || "").toString())
+      (c) => completedCodes.includes(c.code) && !enrolledCodes.includes(c.code)
     );
 
-    // Render
+    const container = document.getElementById("advisingCatalog");
+    if (!container) return;
+
     let html = "";
 
     const renderList = (list, title, badgeColor) => {
-      if (!Array.isArray(list) || list.length === 0)
+      if (list.length === 0)
         return `<h4 style="margin-top:20px; color:#666;">${title}</h4><p style="font-style:italic; color:#888; margin-bottom:20px;">No courses available.</p>`;
 
       let sectionHtml = `<h4 style="margin-top:20px; margin-bottom:10px; color:#4F46E5; border-bottom:1px solid #eee; padding-bottom:5px;">${title}</h4>`;
 
       sectionHtml += list
         .map((c) => {
-          const seats = Number.isFinite(c.seats_available) ? c.seats_available : 0;
-          const isFull = seats <= 0;
-          // tolerant ID match (string/number)
-          const inSlip = advisingSlip.find((s) => s.id == c.id);
+          const isFull = c.seats_available <= 0;
+          const inSlip = advisingSlip.find((s) => s.id === c.id);
 
-          const btnDisabled = isFull || !!inSlip ? "disabled" : "";
-          const btnText = inSlip ? "In Slip" : isFull ? "Full" : "Add";
-          const badgeClass = isFull ? "seat-full" : "seat-open";
+          let btnDisabled = isFull || inSlip ? "disabled" : "";
+          let btnText = inSlip ? "In Slip" : isFull ? "Full" : "Add";
+          let badgeClass = isFull ? "seat-full" : "seat-open";
 
-          const code = (c.code || "").toString();
-          // escape single quotes in name for inline onclick
-          const nameSafe = (c.name || "").replace(/'/g, "\\'").replace(/\n/g, " ");
+          const code = c.code;
+          const name = c.name.replace(/'/g, "\\'");
 
           return `
-            <div class="catalog-item" style="border-left: 4px solid ${badgeColor}; padding:12px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
-              <div class="catalog-info" style="flex:1; min-width:0;">
-                <strong style="display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${code} ${c.name || ""}</strong>
-                <div class="catalog-meta" style="font-size:0.85em; color:#6b7280; margin-top:4px;">
-                  <span style="margin-right:10px;"><i class="fas fa-clock"></i> ${c.schedule || "TBA"}</span>
-                  <span style="margin-right:10px;"><i class="fas fa-chalkboard-teacher"></i> ${c.instructor || "TBA"}</span>
-                  <span><i class="fas fa-star"></i> ${c.credits || 0} Cr</span>
+            <div class="catalog-item" style="border-left: 4px solid ${badgeColor};">
+                <div class="catalog-info">
+                    <strong>${code} ${name}</strong>
+                    <div class="catalog-meta">
+                        <span><i class="fas fa-clock"></i> ${c.schedule}</span>
+                        <span><i class="fas fa-chalkboard-teacher"></i> ${c.instructor}</span>
+                        <span><i class="fas fa-star"></i> ${c.credits} Cr</span>
+                    </div>
                 </div>
-              </div>
-              <div style="text-align:right; min-width:140px;">
-                <div style="margin-bottom:6px;"><span class="seat-badge ${badgeClass}" style="padding:4px 8px; border-radius:6px; font-weight:600;">${seats} Seats</span></div>
-                <button class="add-btn" onclick="addToSlip('${c.id}', '${code}', '${nameSafe}', ${c.credits || 0})" ${btnDisabled} style="padding:6px 12px; border-radius:8px; border:0; cursor:pointer;">${btnText}</button>
-              </div>
-            </div>
-          `;
+                <div style="text-align:right;">
+                    <div style="margin-bottom:5px;"><span class="seat-badge ${badgeClass}">${c.seats_available} Seats</span></div>
+                    <button class="add-btn" onclick="addToSlip(${c.id}, '${code}', '${name}', ${c.credits})" ${btnDisabled}>${btnText}</button>
+                </div>
+            </div>`;
         })
         .join("");
       return sectionHtml;
     };
 
-    html += renderList(undoneCourses, "Regular Courses (Undone)", "#4F46E5");
-    html += renderList(retakeCourses, "Retake Courses", "#F59E0B");
+    html += renderList(
+      undoneCourses,
+      "Regular Courses (Undone / Dropped)",
+      "#4F46E5"
+    );
+    html += renderList(retakeCourses, "Retake Courses (Completed)", "#F59E0B"); // Orange for retakes
 
     container.innerHTML = html;
   } catch (error) {
@@ -428,13 +413,11 @@ async function loadAdvisingCatalog() {
   }
 }
 
-// addToSlip and related slip functions (fixed / tolerant)
 function addToSlip(id, code, name, credits) {
-  // tolerate numeric/string ID differences
-  if (advisingSlip.find((c) => c.id == id)) return;
+  if (advisingSlip.find((c) => c.id === id)) return;
 
-  const slipCredits = advisingSlip.reduce((sum, c) => sum + (c.credits || 0), 0);
-  const totalProjected = currentEnrolledCredits + slipCredits + (credits || 0);
+  const slipCredits = advisingSlip.reduce((sum, c) => sum + c.credits, 0);
+  const totalProjected = currentEnrolledCredits + slipCredits + credits;
 
   if (totalProjected > 15) {
     alert(
@@ -443,54 +426,46 @@ function addToSlip(id, code, name, credits) {
     return;
   }
 
-  // store id with same type as original catalog ID (try number if looks numeric)
-  const parsedId = (typeof id === "string" && /^\d+$/.test(id)) ? Number(id) : id;
-  advisingSlip.push({ id: parsedId, code, name, credits: credits || 0 });
+  advisingSlip.push({ id, code, name, credits });
   renderSlip();
-
-  // reload catalog to refresh button states; use setTimeout(0) to let DOM update first
-  setTimeout(() => {
-    if (typeof loadAdvisingCatalog === "function") loadAdvisingCatalog();
-  }, 0);
+  loadAdvisingCatalog();
 }
 
 function removeFromSlip(id) {
-  advisingSlip = advisingSlip.filter((c) => c.id != id);
+  advisingSlip = advisingSlip.filter((c) => c.id !== id);
   renderSlip();
-  setTimeout(() => {
-    if (typeof loadAdvisingCatalog === "function") loadAdvisingCatalog();
-  }, 0);
+  loadAdvisingCatalog();
 }
 
 function renderSlip() {
   const list = document.getElementById("advisingSlipList");
   if (!list) return;
 
-  const totalCredits = advisingSlip.reduce((sum, c) => sum + (c.credits || 0), 0);
+  const totalCredits = advisingSlip.reduce((sum, c) => sum + c.credits, 0);
   const projectedTotal = currentEnrolledCredits + totalCredits;
 
-  const slipTotalEl = document.getElementById("slipTotalCredits");
-  if (slipTotalEl) {
-    slipTotalEl.innerHTML = `${totalCredits} <small style="color:#666; font-weight:normal; font-size:0.8em;">(New Total: ${projectedTotal})</small>`;
-  }
+  document.getElementById("slipTotalCredits").innerText = totalCredits;
+  document.getElementById(
+    "slipTotalCredits"
+  ).innerHTML = `${totalCredits} <small style="color:#666; font-weight:normal; font-size:0.8em;">(New Total: ${projectedTotal})</small>`;
 
   if (advisingSlip.length === 0) {
-    list.innerHTML = '<div class="empty-state"><i class="fas fa-shopping-basket"></i><p>Slip is empty.</p></div>';
+    list.innerHTML =
+      '<div class="empty-state"><i class="fas fa-shopping-basket"></i><p>Slip is empty.</p></div>';
     return;
   }
 
   list.innerHTML = advisingSlip
     .map(
       (c) => `
-        <div class="slip-item" style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f0f0f0;">
-          <div style="max-width:80%;"><strong>${c.code}</strong> <small>(${c.credits} Cr)</small><br><small style="color:#666; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${c.name}</small></div>
-          <button class="remove-btn" onclick="removeFromSlip('${c.id}')" style="background:transparent; border:0; cursor:pointer;"><i class="fas fa-times"></i></button>
+        <div class="slip-item">
+            <div><strong>${c.code}</strong> <small>(${c.credits} Cr)</small><br><small>${c.name}</small></div>
+            <button class="remove-btn" onclick="removeFromSlip(${c.id})"><i class="fas fa-times"></i></button>
         </div>
-      `
+    `
     )
     .join("");
 }
-
 
 async function confirmAdvisingSlip() {
   if (advisingSlip.length === 0) return alert("Advising slip is empty.");

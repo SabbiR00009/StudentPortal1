@@ -83,6 +83,8 @@ app.get("/api/students/:id", (req, res) => {
 // Get student's enrolled courses
 app.get("/api/students/:id/courses", (req, res) => {
   try {
+    // We join with the 'grades' table to get the actual semester the student took the course (completed_semester)
+    // If no grade exists (current course), we fall back to the course's default semester
     const courses = db
       .prepare(
         `
@@ -127,11 +129,11 @@ app.get("/api/students/:id/grades", (req, res) => {
 
 // ============= ADVISING ROUTES =============
 
-// Get all available courses for advising (UPDATED for Real-Time Seats)
+// Get all available courses for advising (Real-Time Seats)
 app.get("/api/advising/courses", (req, res) => {
   try {
     const { semester } = req.query;
-    // MODIFIED: Added (max_students - enrolled_count) logic
+    // Calculate seats_available dynamically
     const courses = db
       .prepare(
         `
@@ -197,20 +199,22 @@ app.post("/api/advising/request", (req, res) => {
   }
 });
 
-// --- CONFIRM ADVISING SLIP (Real-Time Transaction) ---
+// --- CONFIRM ADVISING SLIP (UPDATED FOR RE-ENROLLMENT) ---
 app.post("/api/advising/confirm", (req, res) => {
   const { studentId, courseIds } = req.body;
 
   // Use a transaction to ensure atomic registration
   const registerTransaction = db.transaction((ids) => {
     for (const courseId of ids) {
-      // 1. Check if already enrolled
+      // 1. Check if record exists (Enrolled, Dropped, or Completed)
       const existing = db
         .prepare(
-          "SELECT id FROM student_courses WHERE student_id = ? AND course_id = ?"
+          "SELECT id, status FROM student_courses WHERE student_id = ? AND course_id = ?"
         )
         .get(studentId, courseId);
-      if (existing) continue;
+
+      // If already actively enrolled, skip to next
+      if (existing && existing.status === "enrolled") continue;
 
       // 2. Real-time Seat Check
       const course = db
@@ -223,11 +227,20 @@ app.post("/api/advising/confirm", (req, res) => {
         throw new Error(`Course ${course.code} is FULL. Registration failed.`);
       }
 
-      // 3. Register & Update Count
-      db.prepare(
-        "INSERT INTO student_courses (student_id, course_id, status) VALUES (?, ?, 'enrolled')"
-      ).run(studentId, courseId);
+      // 3. Enroll or Re-Enroll
+      if (existing) {
+        // If it was dropped or completed, UPDATE it back to enrolled
+        db.prepare(
+          "UPDATE student_courses SET status = 'enrolled', enrolled_at = CURRENT_TIMESTAMP WHERE id = ?"
+        ).run(existing.id);
+      } else {
+        // If never taken, INSERT new record
+        db.prepare(
+          "INSERT INTO student_courses (student_id, course_id, status) VALUES (?, ?, 'enrolled')"
+        ).run(studentId, courseId);
+      }
 
+      // 4. Increment Seat Count
       db.prepare(
         "UPDATE courses SET enrolled_count = enrolled_count + 1 WHERE id = ?"
       ).run(courseId);
