@@ -111,10 +111,24 @@ body {
   font-size: 1.6em;
   font-weight: 800;
 }
+
+/* Header User Info (Fixed) */
 .user-info {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 20px;
+}
+.user-profile-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  padding: 5px 10px;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+.user-profile-link:hover {
+  background-color: #f3f4f6;
 }
 .user-avatar {
   width: 42px;
@@ -127,6 +141,22 @@ body {
   justify-content: center;
   font-weight: bold;
 }
+.user-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  text-align: right;
+}
+#userName {
+  font-weight: 600;
+  font-size: 0.9em;
+  color: #333;
+}
+#userIdDisplay {
+  font-size: 0.75em;
+  color: #666;
+}
+
 .logout-btn {
   background: #fee2e2;
   color: #b91c1c;
@@ -135,6 +165,7 @@ body {
   border-radius: 6px;
   cursor: pointer;
   font-weight: 600;
+  margin-left: 10px;
 }
 
 .dashboard-content {
@@ -476,7 +507,7 @@ td {
   font-size: 1.2em;
 }
 
-/* --- PROFILE STYLES (NEW) --- */
+/* --- PROFILE STYLES --- */
 .profile-card {
   padding: 0;
   overflow: hidden;
