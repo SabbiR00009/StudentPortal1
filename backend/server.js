@@ -11,401 +11,245 @@ app.use(express.json());
 
 // ============= AUTHENTICATION =============
 
-// Student Login
 app.post("/api/login", (req, res) => {
   try {
     const { studentId, password } = req.body;
+    if (!studentId || !password)
+      return res.status(400).json({ error: "Required" });
 
-    if (!studentId || !password) {
-      return res
-        .status(400)
-        .json({ error: "Student ID and password are required" });
+    // 1. Check Admin (Email)
+    const admin = db
+      .prepare("SELECT * FROM admins WHERE email = ? AND password = ?")
+      .get(studentId, password);
+    if (admin) {
+      const { password, ...d } = admin;
+      return res.json({ success: true, user: d, userType: "admin" });
     }
 
+    // 2. Check Student (ID)
     const student = db
       .prepare("SELECT * FROM students WHERE student_id = ? AND password = ?")
       .get(studentId, password);
-
     if (student) {
-      const { password, ...studentData } = student;
-      res.json({ success: true, student: studentData, userType: "student" });
-    } else {
-      res.status(401).json({ error: "Invalid credentials" });
+      const { password, ...d } = student;
+      return res.json({ success: true, student: d, userType: "student" });
     }
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+
+    res.status(401).json({ error: "Invalid credentials" });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 
-// Admin Login
-app.post("/api/admin/login", (req, res) => {
+// ============= ADMIN CONTROLLER ROUTES (NEW) =============
+
+// --- 1. FACULTY MANAGEMENT ---
+app.get("/api/admin/faculty", (req, res) => {
   try {
-    const { email, password } = req.body;
+    const faculty = db.prepare("SELECT * FROM faculty ORDER BY name").all();
+    res.json(faculty);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
-    if (!email || !password) {
-      return res.status(400).json({ error: "Email and password are required" });
-    }
+app.post("/api/admin/faculty", (req, res) => {
+  try {
+    const { faculty_id, name, email, department, designation } = req.body;
+    db.prepare(
+      "INSERT INTO faculty (faculty_id, name, email, department, designation) VALUES (?, ?, ?, ?, ?)"
+    ).run(faculty_id, name, email, department, designation);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
-    const admin = db
-      .prepare("SELECT * FROM admins WHERE email = ? AND password = ?")
-      .get(email, password);
+app.delete("/api/admin/faculty/:id", (req, res) => {
+  try {
+    db.prepare("DELETE FROM faculty WHERE id = ?").run(req.params.id);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
-    if (admin) {
-      const { password, ...adminData } = admin;
-      res.json({ success: true, admin: adminData, userType: "admin" });
-    } else {
-      res.status(401).json({ error: "Invalid admin credentials" });
-    }
+// --- 2. STUDENT MANAGEMENT ---
+app.get("/api/admin/students", (req, res) => {
+  try {
+    const { search } = req.query;
+    let query = "SELECT * FROM students";
+    if (search)
+      query += ` WHERE student_id LIKE '%${search}%' OR name LIKE '%${search}%'`;
+    query += " ORDER BY student_id DESC LIMIT 50";
+    res.json(db.prepare(query).all());
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// ============= STUDENT ROUTES =============
+app.post("/api/admin/students", (req, res) => {
+  try {
+    const s = req.body;
+    if (!s.student_id) {
+      const count = db.prepare("SELECT count(*) as c FROM students").get().c;
+      s.student_id = `SAN${new Date().getFullYear()}${String(
+        count + 1
+      ).padStart(3, "0")}`;
+    }
+    const uniqueId = s.unique_id || `U-${Math.floor(Math.random() * 1000000)}`;
 
-// Get student profile
-app.get("/api/students/:id", (req, res) => {
+    const stmt = db.prepare(`
+            INSERT INTO students (
+                student_id, unique_id, password, name, email, phone, program, department, 
+                admitted_semester, year, semester, dob, blood_group, nid, marital_status, 
+                present_address, permanent_address, advisor_name, advisor_email
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+
+    stmt.run(
+      s.student_id,
+      uniqueId,
+      "123456",
+      s.name,
+      s.email,
+      s.phone,
+      s.program,
+      s.department,
+      s.admitted_semester,
+      s.year,
+      "Fall-2025",
+      s.dob,
+      s.blood_group,
+      s.nid,
+      s.marital_status,
+      s.present_address,
+      s.permanent_address,
+      s.advisor_name,
+      s.advisor_email
+    );
+    res.json({ success: true, message: `Student ${s.student_id} Created!` });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.put("/api/admin/students/:id", (req, res) => {
+  try {
+    const s = req.body;
+    const stmt = db.prepare(`
+            UPDATE students SET 
+            name=?, email=?, phone=?, program=?, department=?, year=?, semester=?, 
+            dob=?, blood_group=?, nid=?, marital_status=?, present_address=?, permanent_address=?, 
+            advisor_name=?, advisor_email=? 
+            WHERE student_id = ?
+        `);
+    stmt.run(
+      s.name,
+      s.email,
+      s.phone,
+      s.program,
+      s.department,
+      s.year,
+      s.semester,
+      s.dob,
+      s.blood_group,
+      s.nid,
+      s.marital_status,
+      s.present_address,
+      s.permanent_address,
+      s.advisor_name,
+      s.advisor_email,
+      req.params.id
+    );
+    res.json({ success: true, message: "Student Profile Updated" });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete("/api/admin/students/:id", (req, res) => {
   try {
     const student = db
-      .prepare("SELECT * FROM students WHERE id = ?")
+      .prepare("SELECT id FROM students WHERE student_id = ?")
       .get(req.params.id);
     if (student) {
-      const { password, ...studentData } = student;
-      res.json(studentData);
+      db.prepare("DELETE FROM student_courses WHERE student_id = ?").run(
+        student.id
+      );
+      db.prepare("DELETE FROM grades WHERE student_id = ?").run(student.id);
+      db.prepare("DELETE FROM advising_requests WHERE student_id = ?").run(
+        student.id
+      );
+      db.prepare("DELETE FROM students WHERE id = ?").run(student.id);
+      res.json({ success: true });
     } else {
       res.status(404).json({ error: "Student not found" });
     }
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 
-// Get student's enrolled courses
-app.get("/api/students/:id/courses", (req, res) => {
+// --- 3. ADMIN STUDENT ACTIONS (Enroll/Drop Override) ---
+app.post("/api/admin/student/enroll", (req, res) => {
   try {
-    // We join with the 'grades' table to get the actual semester the student took the course (completed_semester)
-    // If no grade exists (current course), we fall back to the course's default semester
-    const courses = db
-      .prepare(
-        `
-      SELECT 
-        c.*, 
-        sc.status, 
-        sc.enrolled_at, 
-        g.semester as completed_semester 
-      FROM student_courses sc
-      JOIN courses c ON sc.course_id = c.id
-      LEFT JOIN grades g ON sc.student_id = g.student_id AND sc.course_id = g.course_id 
-      WHERE sc.student_id = ? 
-      ORDER BY CASE WHEN sc.status = 'enrolled' THEN 0 ELSE 1 END, g.semester DESC
-    `
-      )
-      .all(req.params.id);
-    res.json(courses);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get student grades
-app.get("/api/students/:id/grades", (req, res) => {
-  try {
-    const grades = db
-      .prepare(
-        `
-      SELECT c.name as course_name, c.code, c.credits, g.grade, g.semester
-      FROM grades g
-      JOIN courses c ON g.course_id = c.id
-      WHERE g.student_id = ?
-      ORDER BY g.semester DESC
-    `
-      )
-      .all(req.params.id);
-    res.json(grades);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ============= ADVISING ROUTES =============
-
-// Get all available courses for advising (Real-Time Seats)
-app.get("/api/advising/courses", (req, res) => {
-  try {
-    const { semester } = req.query;
-    // Calculate seats_available dynamically
-    const courses = db
-      .prepare(
-        `
-      SELECT *, (max_students - enrolled_count) as seats_available 
-      FROM courses 
-      WHERE semester = ?
-      ORDER BY code, section
-    `
-      )
-      .all(semester || "Fall-2025");
-    res.json(courses);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get active advising period
-app.get("/api/advising/period", (req, res) => {
-  try {
-    const period = db
-      .prepare("SELECT * FROM advising_periods WHERE is_active = 1")
-      .get();
-    res.json(period || null);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Submit advising request (Individual request)
-app.post("/api/advising/request", (req, res) => {
-  try {
-    const { studentId, courseId, semester } = req.body;
-
-    const existing = db
-      .prepare(
-        `SELECT * FROM advising_requests WHERE student_id = ? AND course_id = ? AND semester = ?`
-      )
-      .get(studentId, courseId, semester);
-
-    if (existing) {
-      return res.status(400).json({ error: "Course already requested" });
-    }
-
-    const enrolled = db
-      .prepare(
-        `SELECT * FROM student_courses WHERE student_id = ? AND course_id = ?`
-      )
-      .get(studentId, courseId);
-
-    if (enrolled) {
-      return res.status(400).json({ error: "Already enrolled in this course" });
-    }
-
-    const result = db
-      .prepare(
-        `INSERT INTO advising_requests (student_id, course_id, semester, status) VALUES (?, ?, ?, 'pending')`
-      )
-      .run(studentId, courseId, semester);
-
-    res.json({ success: true, id: result.lastInsertRowid });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// --- CONFIRM ADVISING SLIP (UPDATED FOR RE-ENROLLMENT) ---
-app.post("/api/advising/confirm", (req, res) => {
-  const { studentId, courseIds } = req.body;
-
-  // Use a transaction to ensure atomic registration
-  const registerTransaction = db.transaction((ids) => {
-    for (const courseId of ids) {
-      // 1. Check if record exists (Enrolled, Dropped, or Completed)
-      const existing = db
-        .prepare(
-          "SELECT id, status FROM student_courses WHERE student_id = ? AND course_id = ?"
-        )
-        .get(studentId, courseId);
-
-      // If already actively enrolled, skip to next
-      if (existing && existing.status === "enrolled") continue;
-
-      // 2. Real-time Seat Check
-      const course = db
-        .prepare(
-          "SELECT enrolled_count, max_students, code FROM courses WHERE id = ?"
-        )
-        .get(courseId);
-
-      if (course.enrolled_count >= course.max_students) {
-        throw new Error(`Course ${course.code} is FULL. Registration failed.`);
-      }
-
-      // 3. Enroll or Re-Enroll
-      if (existing) {
-        // If it was dropped or completed, UPDATE it back to enrolled
-        db.prepare(
-          "UPDATE student_courses SET status = 'enrolled', enrolled_at = CURRENT_TIMESTAMP WHERE id = ?"
-        ).run(existing.id);
-      } else {
-        // If never taken, INSERT new record
-        db.prepare(
-          "INSERT INTO student_courses (student_id, course_id, status) VALUES (?, ?, 'enrolled')"
-        ).run(studentId, courseId);
-      }
-
-      // 4. Increment Seat Count
-      db.prepare(
-        "UPDATE courses SET enrolled_count = enrolled_count + 1 WHERE id = ?"
-      ).run(courseId);
-    }
-  });
-
-  try {
-    registerTransaction(courseIds);
-    res.json({ success: true, message: "Registration Successful!" });
-  } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
-  }
-});
-
-// Get student's advising requests
-app.get("/api/students/:id/advising-requests", (req, res) => {
-  try {
-    const requests = db
-      .prepare(
-        `
-      SELECT ar.*, c.code, c.name, c.credits, c.instructor, c.schedule, c.section
-      FROM advising_requests ar
-      JOIN courses c ON ar.course_id = c.id
-      WHERE ar.student_id = ?
-      ORDER BY ar.requested_at DESC
-    `
-      )
-      .all(req.params.id);
-    res.json(requests);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Remove advising request
-app.delete("/api/advising/request/:id", (req, res) => {
-  try {
-    const result = db
-      .prepare("DELETE FROM advising_requests WHERE id = ?")
-      .run(req.params.id);
-
-    if (result.changes === 0) {
-      return res.status(404).json({ error: "Request not found" });
-    }
-
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ============= ADMIN ROUTES =============
-
-// Get all students
-app.get("/api/admin/students", (req, res) => {
-  try {
-    const students = db
-      .prepare(
-        "SELECT id, student_id, name, email, department, year, semester, gpa FROM students"
-      )
-      .all();
-    res.json(students);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get all advising requests
-app.get("/api/admin/advising-requests", (req, res) => {
-  try {
-    const requests = db
-      .prepare(
-        `
-      SELECT ar.*, s.name as student_name, s.student_id, s.department,
-             c.code, c.name as course_name, c.section
-      FROM advising_requests ar
-      JOIN students s ON ar.student_id = s.id
-      JOIN courses c ON ar.course_id = c.id
-      ORDER BY ar.requested_at DESC
-    `
-      )
-      .all();
-    res.json(requests);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Upload/Update Grades
-app.post("/api/admin/grades", (req, res) => {
-  try {
-    const { studentId, courseCode, grade, semester } = req.body;
-
-    // 1. Find Student
-    const student = db
-      .prepare("SELECT id FROM students WHERE student_id = ?")
-      .get(studentId);
-    if (!student) return res.status(404).json({ error: "Student not found" });
-
-    // 2. Find Course
+    const { studentDbId, courseCode } = req.body;
     const course = db
       .prepare("SELECT id FROM courses WHERE code = ?")
       .get(courseCode);
-    if (!course) return res.status(404).json({ error: "Course not found" });
+    if (!course)
+      return res.status(404).json({ error: "Course code not found." });
 
-    // 3. Upsert Grade
-    const existingGrade = db
-      .prepare("SELECT id FROM grades WHERE student_id = ? AND course_id = ?")
-      .get(student.id, course.id);
+    const existing = db
+      .prepare(
+        "SELECT id, status FROM student_courses WHERE student_id = ? AND course_id = ?"
+      )
+      .get(studentDbId, course.id);
 
-    if (existingGrade) {
-      db.prepare("UPDATE grades SET grade = ?, semester = ? WHERE id = ?").run(
-        grade,
-        semester,
-        existingGrade.id
-      );
+    if (existing) {
+      db.prepare(
+        "UPDATE student_courses SET status = 'enrolled', enrolled_at = CURRENT_TIMESTAMP WHERE id = ?"
+      ).run(existing.id);
     } else {
       db.prepare(
-        "INSERT INTO grades (student_id, course_id, grade, semester) VALUES (?, ?, ?, ?)"
-      ).run(student.id, course.id, grade, semester);
+        "INSERT INTO student_courses (student_id, course_id, status) VALUES (?, ?, 'enrolled')"
+      ).run(studentDbId, course.id);
     }
 
-    res.json({ success: true, message: "Grade updated successfully" });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.post("/api/admin/advising/approve/:id", (req, res) => {
-  try {
-    const request = db
-      .prepare("SELECT * FROM advising_requests WHERE id = ?")
-      .get(req.params.id);
-    if (!request) return res.status(404).json({ error: "Request not found" });
-
-    db.prepare(
-      `INSERT INTO student_courses (student_id, course_id, status) VALUES (?, ?, 'enrolled')`
-    ).run(request.student_id, request.course_id);
-    db.prepare("UPDATE advising_requests SET status = ? WHERE id = ?").run(
-      "approved",
-      req.params.id
-    );
     db.prepare(
       "UPDATE courses SET enrolled_count = enrolled_count + 1 WHERE id = ?"
-    ).run(request.course_id);
-
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    ).run(course.id);
+    res.json({ success: true, message: "Student enrolled successfully." });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 
-app.post("/api/admin/advising/reject/:id", (req, res) => {
+app.post("/api/admin/student/drop", (req, res) => {
   try {
-    const result = db
-      .prepare("UPDATE advising_requests SET status = ? WHERE id = ?")
-      .run("rejected", req.params.id);
-    if (result.changes === 0)
-      return res.status(404).json({ error: "Request not found" });
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const { studentDbId, type, targetId } = req.body; // type: 'course' or 'semester'
+
+    if (type === "semester") {
+      db.prepare(
+        "UPDATE student_courses SET status = 'dropped' WHERE student_id = ? AND status = 'enrolled'"
+      ).run(studentDbId);
+      return res.json({ success: true, message: "Semester Dropped by Admin" });
+    } else {
+      db.prepare(
+        "UPDATE student_courses SET status = 'dropped' WHERE student_id = ? AND course_id = ?"
+      ).run(studentDbId, targetId);
+      db.prepare(
+        "UPDATE courses SET enrolled_count = enrolled_count - 1 WHERE id = ?"
+      ).run(targetId);
+      return res.json({ success: true, message: "Course Dropped by Admin" });
+    }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 
+// --- 4. COURSE & GRADE MANAGEMENT ---
 app.post("/api/admin/courses", (req, res) => {
   try {
     const {
@@ -419,143 +263,103 @@ app.post("/api/admin/courses", (req, res) => {
       section,
       semester,
     } = req.body;
-    const result = db
-      .prepare(
-        `
-      INSERT INTO courses (code, name, credits, instructor, instructor_email, schedule, room_number, section, semester)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `
-      )
-      .run(
-        code,
-        name,
-        credits,
-        instructor,
-        instructor_email,
-        schedule,
-        room_number,
-        section,
-        semester
-      );
-    res.json({ success: true, id: result.lastInsertRowid });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    db.prepare(
+      `INSERT INTO courses (code, name, credits, instructor, instructor_email, schedule, room_number, section, semester) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      code,
+      name,
+      credits,
+      instructor,
+      instructor_email,
+      schedule,
+      room_number,
+      section,
+      semester
+    );
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 
 app.delete("/api/admin/courses/:id", (req, res) => {
   try {
-    const result = db
-      .prepare("DELETE FROM courses WHERE id = ?")
-      .run(req.params.id);
-    if (result.changes === 0)
-      return res.status(404).json({ error: "Course not found" });
+    db.prepare("DELETE FROM courses WHERE id = ?").run(req.params.id);
     res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 
-// --- FEATURE: DROP INDIVIDUAL COURSE (UPDATED RULE: Min 9 Credits) ---
-app.post("/api/students/drop-course", (req, res) => {
+app.post("/api/admin/grades", (req, res) => {
   try {
-    const { studentId, courseId } = req.body;
+    const { studentId, courseCode, grade, semester } = req.body;
+    const s = db
+      .prepare("SELECT id FROM students WHERE student_id = ?")
+      .get(studentId);
+    const c = db
+      .prepare("SELECT id FROM courses WHERE code = ?")
+      .get(courseCode);
+    if (!s || !c) return res.status(404).json({ error: "Not found" });
 
-    // 1. Calculate Current Credits
-    const courses = db
+    const ex = db
+      .prepare("SELECT id FROM grades WHERE student_id = ? AND course_id = ?")
+      .get(s.id, c.id);
+    if (ex)
+      db.prepare("UPDATE grades SET grade = ?, semester = ? WHERE id = ?").run(
+        grade,
+        semester,
+        ex.id
+      );
+    else
+      db.prepare(
+        "INSERT INTO grades (student_id, course_id, grade, semester) VALUES (?, ?, ?, ?)"
+      ).run(s.id, c.id, grade, semester);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// --- 5. FINANCIALS & ADMINS ---
+app.get("/api/admin/financials", (req, res) => {
+  try {
+    const report = db
       .prepare(
-        "SELECT c.credits FROM student_courses sc JOIN courses c ON sc.course_id = c.id WHERE sc.student_id = ? AND sc.status = 'enrolled'"
+        `SELECT s.student_id, s.name, SUM(c.credits) as total_credits FROM students s LEFT JOIN student_courses sc ON s.id = sc.student_id AND sc.status = 'enrolled' LEFT JOIN courses c ON sc.course_id = c.id GROUP BY s.id`
       )
-      .all(studentId);
-
-    const totalCredits = courses.reduce((sum, c) => sum + c.credits, 0);
-
-    // 2. Get credits of the course to be dropped
-    const courseToDrop = db
-      .prepare("SELECT credits FROM courses WHERE id = ?")
-      .get(courseId);
-
-    if (!courseToDrop)
-      return res.status(404).json({ error: "Course not found." });
-
-    // 3. Validate Rule: Cannot drop if remaining credits < 9
-    if (totalCredits - courseToDrop.credits < 9) {
-      return res
-        .status(400)
-        .json({
-          error: `Cannot drop. You must maintain at least 9 credits (Current: ${totalCredits}).`,
-        });
-    }
-
-    // 4. Process Drop
-    db.prepare(
-      "UPDATE student_courses SET status = 'dropped' WHERE student_id = ? AND course_id = ? AND status = 'enrolled'"
-    ).run(studentId, courseId);
-    db.prepare(
-      "UPDATE courses SET enrolled_count = enrolled_count - 1 WHERE id = ?"
-    ).run(courseId);
-
-    res.json({ success: true, message: "Course dropped successfully." });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// --- FEATURE 4.4: DROP SEMESTER ---
-app.post("/api/students/drop-semester", (req, res) => {
-  try {
-    const { studentId } = req.body;
-    const result = db
-      .prepare(
-        `UPDATE student_courses SET status = 'dropped' WHERE student_id = ? AND status = 'enrolled'`
-      )
-      .run(studentId);
-    res.json({ success: true, message: `Dropped ${result.changes} courses.` });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// --- FEATURE 4.6: FINANCIALS / FEES ---
-app.get("/api/students/:id/financials", (req, res) => {
-  try {
-    const result = db
-      .prepare(
-        `
-      SELECT SUM(c.credits) as totalCredits 
-      FROM student_courses sc 
-      JOIN courses c ON sc.course_id = c.id 
-      WHERE sc.student_id = ? AND sc.status = 'enrolled'
-    `
-      )
-      .get(req.params.id);
-
-    const credits = result.totalCredits || 0;
-    const costPerCredit = 150;
-    const baseFee = 500;
-    const totalAmount = credits * costPerCredit + baseFee;
-
-    res.json({
-      credits: credits,
-      tuition: credits * costPerCredit,
-      baseFee: baseFee,
-      total: totalAmount,
-      status: totalAmount > 0 ? "Pending" : "Paid",
-      dueDate: "2025-12-15",
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ============= ANNOUNCEMENTS =============
-
-app.get("/api/announcements", (req, res) => {
-  try {
-    const announcements = db
-      .prepare("SELECT * FROM announcements ORDER BY created_at DESC LIMIT 10")
       .all();
-    res.json(announcements);
+    const data = report.map((r) => ({
+      ...r,
+      amountDue: (r.total_credits || 0) * 150 + 500,
+      status: r.total_credits > 0 ? "Pending" : "Paid/Refunded",
+    }));
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post("/api/admin/admins", (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    db.prepare(
+      "INSERT INTO admins (name, email, password) VALUES (?, ?, ?)"
+    ).run(name, email, password);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post("/api/admin/semesters", (req, res) => {
+  try {
+    const { semester, start_date, end_date } = req.body;
+    db.prepare("UPDATE advising_periods SET is_active = 0").run();
+    db.prepare(
+      "INSERT INTO advising_periods (semester, start_date, end_date, is_active) VALUES (?, ?, ?, 1)"
+    ).run(semester, start_date, end_date);
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -563,22 +367,184 @@ app.get("/api/announcements", (req, res) => {
 
 app.post("/api/admin/announcements", (req, res) => {
   try {
-    const { title, content, category } = req.body;
-    const result = db
-      .prepare(
-        `INSERT INTO announcements (title, content, category) VALUES (?, ?, ?)`
-      )
-      .run(title, content, category);
-    res.json({ success: true, id: result.lastInsertRowid });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    db.prepare(
+      `INSERT INTO announcements (title, content, category) VALUES (?, ?, ?)`
+    ).run(req.body.title, req.body.content, req.body.category);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 
-app.listen(PORT, () => {
-  console.log(
-    `🎓 SAN University Portal Server running on http://localhost:${PORT}`
-  );
-  console.log(`📚 Database: san_university.db`);
-  console.log(`🔐 Admin: sabbir.hossain.28678@gmail.com / sabbir009`);
+// ============= STUDENT PORTAL ROUTES (Existing) =============
+
+app.get("/api/students/:id", (req, res) => {
+  try {
+    const s = db
+      .prepare("SELECT * FROM students WHERE id = ? OR student_id = ?")
+      .get(req.params.id, req.params.id);
+    if (s) {
+      const { password, ...d } = s;
+      res.json(d);
+    } else res.status(404).json({ error: "Not found" });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
+
+app.get("/api/students/:id/courses", (req, res) => {
+  try {
+    const courses = db
+      .prepare(
+        `SELECT c.*, sc.status, sc.enrolled_at, g.semester as completed_semester FROM student_courses sc JOIN courses c ON sc.course_id = c.id LEFT JOIN grades g ON sc.student_id = g.student_id AND sc.course_id = g.course_id WHERE sc.student_id = ? ORDER BY CASE WHEN sc.status = 'enrolled' THEN 0 ELSE 1 END, g.semester DESC`
+      )
+      .all(req.params.id);
+    res.json(courses);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get("/api/students/:id/grades", (req, res) => {
+  try {
+    const grades = db
+      .prepare(
+        `SELECT c.name as course_name, c.code, c.credits, g.grade, g.semester FROM grades g JOIN courses c ON g.course_id = c.id WHERE g.student_id = ? ORDER BY g.semester DESC`
+      )
+      .all(req.params.id);
+    res.json(grades);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get("/api/students/:id/financials", (req, res) => {
+  try {
+    const result = db
+      .prepare(
+        `SELECT SUM(c.credits) as totalCredits FROM student_courses sc JOIN courses c ON sc.course_id = c.id WHERE sc.student_id = ? AND sc.status = 'enrolled'`
+      )
+      .get(req.params.id);
+    const credits = result.totalCredits || 0;
+    res.json({
+      credits,
+      tuition: credits * 150,
+      baseFee: 500,
+      total: credits * 150 + 500,
+      status: credits > 0 ? "Pending" : "Paid",
+      dueDate: "2025-12-15",
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post("/api/students/drop-course", (req, res) => {
+  try {
+    const { studentId, courseId } = req.body;
+    const courses = db
+      .prepare(
+        "SELECT c.credits FROM student_courses sc JOIN courses c ON sc.course_id = c.id WHERE sc.student_id = ? AND sc.status = 'enrolled'"
+      )
+      .all(studentId);
+    const totalCredits = courses.reduce((sum, c) => sum + c.credits, 0);
+    const courseToDrop = db
+      .prepare("SELECT credits FROM courses WHERE id = ?")
+      .get(courseId);
+    if (!courseToDrop)
+      return res.status(404).json({ error: "Course not found." });
+    if (totalCredits - courseToDrop.credits < 9)
+      return res.status(400).json({ error: `Min 9 credits required.` });
+
+    db.prepare(
+      "UPDATE student_courses SET status = 'dropped' WHERE student_id = ? AND course_id = ? AND status = 'enrolled'"
+    ).run(studentId, courseId);
+    db.prepare(
+      "UPDATE courses SET enrolled_count = enrolled_count - 1 WHERE id = ?"
+    ).run(courseId);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post("/api/students/drop-semester", (req, res) => {
+  try {
+    db.prepare(
+      "UPDATE student_courses SET status = 'dropped' WHERE student_id = ? AND status = 'enrolled'"
+    ).run(req.body.studentId);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get("/api/advising/courses", (req, res) => {
+  try {
+    const courses = db
+      .prepare(
+        "SELECT *, (max_students - enrolled_count) as seats_available FROM courses WHERE semester = ? ORDER BY code"
+      )
+      .all("Fall-2025");
+    res.json(courses);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post("/api/advising/confirm", (req, res) => {
+  const { studentId, courseIds } = req.body;
+  const tx = db.transaction((ids) => {
+    for (const courseId of ids) {
+      const existing = db
+        .prepare(
+          "SELECT id, status FROM student_courses WHERE student_id = ? AND course_id = ?"
+        )
+        .get(studentId, courseId);
+      if (existing && existing.status === "enrolled") continue;
+      const course = db
+        .prepare(
+          "SELECT enrolled_count, max_students, code FROM courses WHERE id = ?"
+        )
+        .get(courseId);
+      if (course.enrolled_count >= course.max_students)
+        throw new Error(`Course ${course.code} is FULL.`);
+
+      if (existing)
+        db.prepare(
+          "UPDATE student_courses SET status = 'enrolled' WHERE id = ?"
+        ).run(existing.id);
+      else
+        db.prepare(
+          "INSERT INTO student_courses (student_id, course_id, status) VALUES (?, ?, 'enrolled')"
+        ).run(studentId, courseId);
+      db.prepare(
+        "UPDATE courses SET enrolled_count = enrolled_count + 1 WHERE id = ?"
+      ).run(courseId);
+    }
+  });
+  try {
+    tx(courseIds);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(400).json({ success: false, message: e.message });
+  }
+});
+
+app.get("/api/announcements", (req, res) => {
+  try {
+    res.json(
+      db
+        .prepare(
+          "SELECT * FROM announcements ORDER BY created_at DESC LIMIT 10"
+        )
+        .all()
+    );
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.listen(PORT, () =>
+  console.log(`Server running on http://localhost:${PORT}`)
+);

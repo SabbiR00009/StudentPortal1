@@ -507,7 +507,7 @@ td {
   font-size: 1.2em;
 }
 
-/* --- PROFILE STYLES --- */
+/* --- PROFILE STYLES (NEW) --- */
 .profile-card {
   padding: 0;
   overflow: hidden;
@@ -698,4 +698,249 @@ td {
   .profile-body {
     grid-template-columns: 1fr;
   }
+}
+
+/* --- ADMIN PANEL STYLES --- */
+.admin-theme .navbar h1 {
+  color: #dc2626;
+} /* Red Text */
+.admin-theme .user-avatar {
+  background: linear-gradient(135deg, #dc2626, #ef4444);
+  box-shadow: 0 2px 5px rgba(220, 38, 38, 0.3);
+}
+.admin-theme .nav-btn.active {
+  background: #fee2e2;
+  color: #dc2626;
+  border-left: 4px solid #dc2626;
+}
+.admin-theme .welcome-section {
+  background: linear-gradient(120deg, #1f2937, #374151);
+} /* Dark Grey */
+
+/* Admin Forms */
+.admin-form {
+  display: grid;
+  gap: 15px;
+}
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+.admin-input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-family: inherit;
+}
+.admin-btn {
+  background: #1f2937;
+  color: white;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: 0.2s;
+}
+.admin-btn:hover {
+  background: #000;
+}
+.admin-select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+}
+
+/* Admin Tables */
+.action-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 1.1em;
+  transition: 0.2s;
+}
+.btn-approve {
+  color: #10b981;
+}
+.btn-reject {
+  color: #ef4444;
+}
+.btn-delete {
+  color: #dc2626;
+}
+.btn-approve:hover,
+.btn-reject:hover,
+.btn-delete:hover {
+  transform: scale(1.2);
+}
+
+/* --- MODAL STYLES (NEW) --- */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.modal-card {
+  background: white;
+  width: 500px;
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+}
+.modal-card.wide-modal {
+  width: 800px;
+}
+.modal-header {
+  padding: 20px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8fafc;
+  border-radius: 12px 12px 0 0;
+}
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.2em;
+  color: #1f2937;
+}
+.close-modal {
+  background: none;
+  border: none;
+  font-size: 1.5em;
+  cursor: pointer;
+  color: #6b7280;
+}
+.modal-body {
+  padding: 25px;
+  overflow-y: auto;
+}
+.modal-body-scroll {
+  padding: 25px;
+  overflow-y: auto;
+}
+.modal-footer {
+  padding: 20px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  background: #f8fafc;
+  border-radius: 0 0 12px 12px;
+}
+
+/* Edit Student Specifics */
+.edit-profile-header {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 25px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.profile-icon-placeholder {
+  width: 60px;
+  height: 60px;
+  background: #fee2e2;
+  color: #dc2626;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8em;
+}
+.profile-main-inputs {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+.edit-grid-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+}
+.edit-column {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.form-section-title {
+  font-size: 0.85em;
+  font-weight: 700;
+  color: #dc2626;
+  margin-bottom: 10px;
+  padding-bottom: 5px;
+  border-bottom: 2px solid #fee2e2;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.form-row-compact {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* Course Management in Modal */
+.course-management-section {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 25px;
+}
+.course-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+.course-input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+.course-list-container {
+  max-height: 150px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+.course-list-container table {
+  width: 100%;
+}
+.course-list-container td {
+  padding: 8px;
+  font-size: 0.9em;
+  border-bottom: 1px solid #eee;
+}
+.semester-actions {
+  text-align: right;
+  padding-top: 10px;
+}
+.readonly-input {
+  background-color: #f3f4f6;
+  cursor: not-allowed;
+  color: #666;
+}
+.highlight-input {
+  border-color: #fee2e2;
+  background-color: #fffbfc;
+  font-weight: 600;
 }

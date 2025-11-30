@@ -67,22 +67,42 @@ document.addEventListener("DOMContentLoaded", () => {
   if (dropBtn) dropBtn.addEventListener("click", dropSemester);
 });
 
-// --- AUTHENTICATION ---
+// --- AUTHENTICATION (SMART ROUTING) ---
 async function handleLogin(e) {
   e.preventDefault();
-  const studentId = document.getElementById("studentId").value;
+  const inputVal = document.getElementById("studentId").value; // Can be ID or Email
   const password = document.getElementById("password").value;
   const errEl = document.getElementById("errorMessage");
 
+  // Determine if Admin (Email) or Student (ID)
+  const isAdmin = inputVal.includes("@");
+  const endpoint = isAdmin ? `${API_URL}/admin/login` : `${API_URL}/login`;
+
+  // Backend expects different keys for admin vs student
+  const payload = isAdmin
+    ? { email: inputVal, password }
+    : { studentId: inputVal, password };
+
   try {
-    const res = await fetch(`${API_URL}/login`, {
+    const res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ studentId, password }),
+      body: JSON.stringify(payload),
     });
     const data = await res.json();
 
     if (res.ok) {
+      // 1. ADMIN REDIRECT CHECK
+      if (data.userType === "admin") {
+        sessionStorage.setItem(
+          "adminUser",
+          JSON.stringify(data.user || data.admin)
+        );
+        window.location.href = "admin.html";
+        return;
+      }
+
+      // 2. STUDENT LOGIN
       currentStudent = data.student;
       currentStudent.dbId = data.student.id || data.student._id;
       showDashboard();
@@ -248,6 +268,7 @@ async function loadHomeData() {
       currentCourses.length === 0 && droppedCourses.length > 0;
 
     if (isFullyDropped) {
+      // Semester is FULLY dropped
       if (dropBtn) {
         dropBtn.disabled = true;
         dropBtn.style.opacity = "0.5";
@@ -263,6 +284,7 @@ async function loadHomeData() {
             </div>
         `;
     } else {
+      // Semester is active
       if (dropBtn) {
         dropBtn.disabled = false;
         dropBtn.style.opacity = "1";
@@ -346,13 +368,12 @@ async function loadAdvisingCatalog() {
       .map((c) => c.code);
 
     // 3. Filter Logic
-    // Undone (Regular/Dropped): NOT COMPLETED and NOT ENROLLED.
-    // A dropped course is NOT 'completed', so it naturally falls here (which is what you want).
+    // Undone (Regular/Dropped): NOT completed AND NOT currently enrolled.
     const undoneCourses = allCatalog.filter(
       (c) => !completedCodes.includes(c.code) && !enrolledCodes.includes(c.code)
     );
 
-    // Retake: Is in COMPLETED codes AND Not currently enrolled.
+    // Retake: Is in completedCodes AND Not currently enrolled.
     const retakeCourses = allCatalog.filter(
       (c) => completedCodes.includes(c.code) && !enrolledCodes.includes(c.code)
     );
