@@ -9,8 +9,6 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// ============= AUTHENTICATION =============
-
 app.post("/api/login", (req, res) => {
   try {
     const { studentId, password } = req.body;
@@ -21,6 +19,7 @@ app.post("/api/login", (req, res) => {
     const admin = db
       .prepare("SELECT * FROM admins WHERE email = ? AND password = ?")
       .get(studentId, password);
+
     if (admin) {
       const { password, ...d } = admin;
       return res.json({ success: true, user: d, userType: "admin" });
@@ -30,6 +29,7 @@ app.post("/api/login", (req, res) => {
     const student = db
       .prepare("SELECT * FROM students WHERE student_id = ? AND password = ?")
       .get(studentId, password);
+
     if (student) {
       const { password, ...d } = student;
       return res.json({ success: true, student: d, userType: "student" });
@@ -40,6 +40,7 @@ app.post("/api/login", (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
 
 // ============= ADMIN CONTROLLER ROUTES (NEW) =============
 

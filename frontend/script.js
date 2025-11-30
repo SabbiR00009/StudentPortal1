@@ -67,21 +67,18 @@ document.addEventListener("DOMContentLoaded", () => {
   if (dropBtn) dropBtn.addEventListener("click", dropSemester);
 });
 
-// --- AUTHENTICATION (SMART ROUTING) ---
 async function handleLogin(e) {
   e.preventDefault();
-  const inputVal = document.getElementById("studentId").value; // Can be ID or Email
+
+  const inputVal = document.getElementById("studentId").value;
   const password = document.getElementById("password").value;
   const errEl = document.getElementById("errorMessage");
 
-  // Determine if Admin (Email) or Student (ID)
   const isAdmin = inputVal.includes("@");
-  const endpoint = isAdmin ? `${API_URL}/admin/login` : `${API_URL}/login`;
 
-  // Backend expects different keys for admin vs student
-  const payload = isAdmin
-    ? { email: inputVal, password }
-    : { studentId: inputVal, password };
+  const endpoint = `${API_URL}/login`;
+
+  const payload = { studentId: inputVal, password };
 
   try {
     const res = await fetch(endpoint, {
@@ -89,20 +86,16 @@ async function handleLogin(e) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
+
     const data = await res.json();
 
     if (res.ok) {
-      // 1. ADMIN REDIRECT CHECK
       if (data.userType === "admin") {
-        sessionStorage.setItem(
-          "adminUser",
-          JSON.stringify(data.user || data.admin)
-        );
+        sessionStorage.setItem("adminUser", JSON.stringify(data.user));
         window.location.href = "admin.html";
         return;
       }
 
-      // 2. STUDENT LOGIN
       currentStudent = data.student;
       currentStudent.dbId = data.student.id || data.student._id;
       showDashboard();
@@ -115,6 +108,8 @@ async function handleLogin(e) {
     errEl.style.display = "block";
   }
 }
+
+
 
 function showDashboard() {
   document.getElementById("loginPage").style.display = "none";
