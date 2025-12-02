@@ -74,7 +74,7 @@
                 <form id="loginForm">
                     <div class="input-group">
                         <label>Student ID / Email</label>
-                        <input type="text" id="studentId" placeholder="e.g., SAN2025001" required>
+                        <input type="text" id="studentId" placeholder="e.g., 2025-3-60-001" required>
                     </div>
                     
                     <div class="input-group password-group">
@@ -155,9 +155,28 @@
                     <div class="advising-layout">
                         <div class="card">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
-                                <h3 style="margin:0; border:none;">Fall-2025 Catalog</h3>
-                                <span class="live-badge"><i class="fas fa-circle"></i> LIVE SEATS</span>
+                                <h3 style="margin:0; border:none;">Course Catalog</h3>
+                                <span class="live-badge"><i class="fas fa-circle"></i> LIVE</span>
                             </div>
+
+                            <div style="display:flex; gap:10px; margin-bottom:15px; padding-bottom:15px; border-bottom:1px solid #eee;">
+                                <select id="advDeptFilter" onchange="loadAdvisingCatalog()" style="padding:8px; border-radius:6px; border:1px solid #ccc; flex:1;">
+                                    <option value="All">All Departments</option>
+                                    <option value="CSE">CSE Dept</option>
+                                    <option value="EEE">EEE Dept</option>
+                                    <option value="BBA">BBA Dept</option>
+                                    <option value="ACT">ACT Dept</option>
+                                    <option value="ENG">English Dept</option>
+                                </select>
+                                
+                                <select id="advSemFilter" onchange="loadAdvisingCatalog()" style="padding:8px; border-radius:6px; border:1px solid #ccc; flex:1;">
+                                    <option value="">All Semesters</option>
+                                    <option value="Fall-2025" selected>Fall 25</option>
+                                    <option value="Summer-2025">Summer 25</option>
+                                    <option value="Spring-2025">Spring 25</option>
+                                </select>
+                            </div>
+
                             <div id="advisingCatalog" class="catalog-list">Loading courses...</div>
                         </div>
 

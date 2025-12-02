@@ -14,6 +14,10 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("newStudentForm").addEventListener("submit", registerStudent);
   document.getElementById("addAdminForm").addEventListener("submit", addAdmin);
   document.getElementById("editStudentForm").addEventListener("submit", updateStudentProfile);
+  
+  // Advising Slots Form
+  const slotForm = document.getElementById("addSlotForm");
+  if (slotForm) slotForm.addEventListener("submit", addSlot);
 
   // 3. Logo Click -> Go to Overview
   const adminLogo = document.getElementById("adminNavLogo");
@@ -24,20 +28,20 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // 4. Setup Admin Avatar (Rendering & Click to Profile)
+  // 4. Setup Admin Avatar
   setupAdminAvatar();
 });
 
 // --- ADMIN AVATAR & PROFILE LOGIC ---
 function setupAdminAvatar() {
-    // Get Admin data from Session Storage (set during login in script.js)
-    // Note: Ensure your login logic in script.js saves admin data to sessionStorage
+    // Get Admin data from Session Storage
     const adminData = JSON.parse(sessionStorage.getItem('adminUser'));
     const avatarEl = document.querySelector('.navbar .user-avatar');
     
     if (adminData && avatarEl) {
         // Update Name in Navbar
-        document.getElementById("adminName").innerText = adminData.name;
+        const nameEl = document.getElementById("adminName");
+        if(nameEl) nameEl.innerText = adminData.name;
 
         // Generate Image URL based on name
         const imgUrl = `https://ui-avatars.com/api/?name=${adminData.name}&background=dc2626&color=fff`;
@@ -56,7 +60,6 @@ function setupAdminAvatar() {
 function loadAdminProfile(admin) {
     document.getElementById('adminProfileName').innerText = admin.name;
     document.getElementById('adminProfileEmail').innerText = admin.email;
-    // Larger image for profile view
     document.getElementById('adminProfileImg').src = `https://ui-avatars.com/api/?name=${admin.name}&background=dc2626&color=fff&size=128`;
 }
 
@@ -78,6 +81,8 @@ function switchAdminView(viewName, btn) {
   if (viewName === "students") loadStudents();
   if (viewName === "financials") loadFinancials();
   if (viewName === "faculty") loadFaculty();
+  if (viewName === "slots") loadSlots();
+  if (viewName === "courses") loadAdminCourses();
 }
 
 function logout() {
@@ -134,11 +139,15 @@ async function registerStudent(e) {
     name: document.getElementById("nsName").value,
     email: document.getElementById("nsEmail").value,
     phone: document.getElementById("nsPhone").value,
+    
+    // [UPDATED] Send ID Generation Data
     department: document.getElementById("nsDept").value,
-    program: document.getElementById("nsProgram").value,
+    admitted_year: document.getElementById("nsYear").value,
+    admitted_semester: document.getElementById("nsSem").value,
+
+    // Advisor
     advisor_name: document.getElementById("nsAdvisor").value,
     advisor_email: document.getElementById("nsAdvisorEmail").value,
-    year: 1,
   };
 
   try {
@@ -149,7 +158,7 @@ async function registerStudent(e) {
     });
     const data = await res.json();
     if (data.success) {
-      alert("Student Registered! ID: " + (data.studentId || "Auto"));
+      alert(data.message); // e.g. "Student Created! ID: 2025-3-60-001"
       document.getElementById("studentModal").style.display = "none";
       e.target.reset();
       loadStudents();
@@ -239,7 +248,7 @@ async function updateStudentProfile(e) {
   }
 }
 
-// --- ADMIN COURSE MANAGEMENT FOR STUDENT ---
+// --- ADMIN COURSE ACTIONS FOR STUDENT (Enroll/Drop Override) ---
 
 async function loadAdminStudentCourses(dbId) {
   const res = await fetch(`${API_URL}/students/${dbId}/courses`);
@@ -273,7 +282,7 @@ async function loadAdminStudentCourses(dbId) {
 async function loadAdminAvailableCourses(dbId) {
   try {
     const [catRes, stuRes] = await Promise.all([
-      fetch(`${API_URL}/advising/courses`),
+      fetch(`${API_URL}/advising/courses`), // Gets all courses
       fetch(`${API_URL}/students/${dbId}/courses`),
     ]);
     const allCatalog = await catRes.json();
@@ -283,6 +292,7 @@ async function loadAdminAvailableCourses(dbId) {
       .filter((c) => c.status === "enrolled")
       .map((c) => c.code);
 
+    // Filter out enrolled courses
     const availableCourses = allCatalog.filter(
       (c) => !enrolledCodes.includes(c.code)
     );
@@ -422,12 +432,85 @@ async function deleteFaculty(id) {
   loadFaculty();
 }
 
-// --- 3. MANAGE COURSES ---
+// --- 3. MANAGE COURSES (With Seat Control) ---
+
+async function loadAdminCourses() {
+    try {
+        const res = await fetch(`${API_URL}/admin/courses`);
+        const courses = await res.json();
+        const tbody = document.getElementById("courseList");
+
+        if (courses.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No courses defined.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = courses.map(c => {
+            // Safe div handling if max_students is 0
+            const percentage = c.max_students > 0 ? Math.round((c.enrolled_count / c.max_students) * 100) : 100;
+            const statusColor = percentage >= 100 ? 'red' : (percentage >= 80 ? 'orange' : 'green');
+            
+            return `
+            <tr>
+                <td><strong>${c.code}</strong></td>
+                <td>${c.name}</td>
+                <td>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span>${c.enrolled_count} / ${c.max_students}</span>
+                        <button onclick="editSeatCapacity(${c.id}, ${c.max_students}, '${c.code}')" 
+                                style="font-size:0.8em; padding:2px 8px; background:#e0e7ff; color:#4338ca; border:none; border-radius:4px; cursor:pointer;">
+                            Edit
+                        </button>
+                    </div>
+                </td>
+                <td><span style="color:${statusColor}; font-weight:bold;">${percentage}% Full</span></td>
+                <td>
+                    <button onclick="deleteCourse(${c.id})" class="action-btn btn-delete"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>
+            `;
+        }).join("");
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+async function editSeatCapacity(id, currentMax, code) {
+    const newMax = prompt(`Enter new total capacity for ${code}:`, currentMax);
+    
+    if (newMax !== null && newMax !== "") {
+        const maxInt = parseInt(newMax);
+        if (isNaN(maxInt) || maxInt < 0) return alert("Please enter a valid number.");
+
+        try {
+            const res = await fetch(`${API_URL}/admin/courses/${id}/capacity`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ max_students: maxInt })
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                alert(data.message);
+                loadAdminCourses(); 
+            } else {
+                alert("Error: " + data.error);
+            }
+        } catch (e) {
+            alert("Connection error");
+        }
+    }
+}
+
 async function addCourse(e) {
   e.preventDefault();
   const body = {
     code: document.getElementById("cCode").value,
     name: document.getElementById("cName").value,
+    
+    // [UPDATED] Catch Department from Dropdown
+    department: document.getElementById("cDept").value,
+    
     credits: document.getElementById("cCredits").value,
     instructor: document.getElementById("cInstructor").value,
     schedule: document.getElementById("cTime").value,
@@ -443,6 +526,15 @@ async function addCourse(e) {
   });
   alert("Course Added!");
   e.target.reset();
+  loadAdminCourses(); // Refresh table
+}
+
+async function deleteCourse(id) {
+    if(!confirm("Delete this course completely? This will remove all student enrollments associated with it.")) return;
+    try {
+        await fetch(`${API_URL}/admin/courses/${id}`, { method: 'DELETE' });
+        loadAdminCourses();
+    } catch(e) { console.error(e); }
 }
 
 // --- 4. UPLOAD GRADES ---
@@ -479,7 +571,56 @@ async function addSemester(e) {
   alert("Semester Opened!");
 }
 
-// --- 6. ANNOUNCEMENTS ---
+// --- 6. ADVISING SLOTS (Gatekeeper) ---
+async function loadSlots() {
+    const res = await fetch(`${API_URL}/admin/slots`);
+    const slots = await res.json();
+    const tbody = document.getElementById("slotsList");
+    
+    tbody.innerHTML = slots.map(s => {
+        const start = new Date(s.start_time);
+        const end = new Date(s.end_time);
+        const now = new Date();
+        const isActive = now >= start && now <= end;
+        const status = isActive ? '<span style="color:green; font-weight:bold;">Active Now</span>' : (now < start ? '<span style="color:orange;">Upcoming</span>' : '<span style="color:gray;">Expired</span>');
+
+        return `
+            <tr>
+                <td>${s.min_credits} - ${s.max_credits} Cr</td>
+                <td>${start.toLocaleString()}</td>
+                <td>${end.toLocaleString()}</td>
+                <td>${status}</td>
+                <td><button onclick="deleteSlot(${s.id})" class="action-btn btn-delete"><i class="fas fa-trash"></i></button></td>
+            </tr>
+        `;
+    }).join('');
+}
+
+async function addSlot(e) {
+    e.preventDefault();
+    const body = {
+        min: document.getElementById("slotMin").value,
+        max: document.getElementById("slotMax").value,
+        start: document.getElementById("slotStart").value,
+        end: document.getElementById("slotEnd").value
+    };
+    await fetch(`${API_URL}/admin/slots`, {
+        method: "POST", 
+        headers: {'Content-Type': 'application/json'}, 
+        body: JSON.stringify(body)
+    });
+    alert("Time Slot Created!");
+    loadSlots();
+    e.target.reset();
+}
+
+async function deleteSlot(id) {
+    if(!confirm("Remove this time slot?")) return;
+    await fetch(`${API_URL}/admin/slots/${id}`, { method: 'DELETE' });
+    loadSlots();
+}
+
+// --- 7. ANNOUNCEMENTS ---
 async function postAnnouncement(e) {
   e.preventDefault();
   const body = {
@@ -496,7 +637,7 @@ async function postAnnouncement(e) {
   e.target.reset();
 }
 
-// --- 7. FINANCIALS ---
+// --- 8. FINANCIALS ---
 async function loadFinancials() {
   const res = await fetch(`${API_URL}/admin/financials`);
   const data = await res.json();
@@ -506,7 +647,7 @@ async function loadFinancials() {
     ).join("")}</tbody></table>`;
 }
 
-// --- 8. ADD ADMIN ---
+// --- 9. ADD ADMIN ---
 async function addAdmin(e) {
   e.preventDefault();
   const body = {

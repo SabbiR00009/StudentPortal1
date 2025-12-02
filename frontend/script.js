@@ -33,7 +33,7 @@ window.addEventListener("popstate", (event) => {
 
 // --- INITIALIZATION ---
 document.addEventListener("DOMContentLoaded", () => {
-  checkAuth(); // Determine start page (Landing vs Dashboard)
+  checkAuth(); // Determine start page
 
   // 1. Login Form
   const loginForm = document.getElementById("loginForm");
@@ -43,7 +43,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const logoutBtn = document.getElementById("logoutBtn");
   if (logoutBtn) logoutBtn.addEventListener("click", logout);
 
-  // 3. Sidebar Navigation Buttons
+  // 3. Navigation Buttons
   const navBtns = document.querySelectorAll(".nav-btn:not(#dropSemesterBtn)");
   navBtns.forEach((btn) => {
     btn.addEventListener("click", (e) => {
@@ -67,26 +67,23 @@ document.addEventListener("DOMContentLoaded", () => {
   const userAvatar = document.getElementById("userAvatar");
   if (userAvatar) {
     userAvatar.addEventListener("click", () => {
-      // Pass null for btn because Profile doesn't have a sidebar button
       switchView("profile", null);
     });
   }
 
-  // 6. [NEW] Password Toggle Logic
+  // 6. Password Toggle
   const togglePassword = document.getElementById("togglePassword");
   const passwordInput = document.getElementById("password");
   if (togglePassword && passwordInput) {
       togglePassword.addEventListener("click", function () {
           const type = passwordInput.getAttribute("type") === "password" ? "text" : "password";
           passwordInput.setAttribute("type", type);
-          
-          // Toggle Icon Class
           this.classList.toggle("fa-eye");
           this.classList.toggle("fa-eye-slash");
       });
   }
 
-  // 7. Stat Cards (Clickable widgets)
+  // 7. Stat Cards
   const statCards = document.querySelectorAll(".stat-card");
   statCards.forEach((card) => {
     card.addEventListener("click", () => {
@@ -115,7 +112,7 @@ function checkAuth() {
         currentStudent.dbId = currentStudent.id || currentStudent._id;
         showDashboard();
     } else {
-        showLanding(); // Default start state
+        showLanding();
     }
 }
 
@@ -129,7 +126,7 @@ window.showLanding = function() {
 
 window.showLogin = function() {
     document.getElementById("landingPage").style.display = "none";
-    document.getElementById("loginPage").style.display = "flex"; // Flex to center
+    document.getElementById("loginPage").style.display = "flex";
     document.getElementById("dashboard").style.display = "none";
 }
 
@@ -138,16 +135,16 @@ function showDashboard() {
   document.getElementById("loginPage").style.display = "none";
   document.getElementById("dashboard").style.display = "block";
   
-  // Set Header Info
+  // Header Info
   document.getElementById("welcomeMessage").innerText = `Welcome back, ${currentStudent.name.split(" ")[0]}!`;
   document.getElementById("userName").innerText = currentStudent.name;
   document.getElementById("userIdDisplay").innerText = `ID: ${currentStudent.student_id}`;
   
-  // Render Avatar
+  // Avatar
   const avatarUrl = currentStudent.avatar || `https://ui-avatars.com/api/?name=${currentStudent.name}&background=4F46E5&color=fff`;
-  document.getElementById("userAvatar").innerHTML = `<img src="${avatarUrl}" alt="Profile">`;
+  document.getElementById("userAvatar").innerHTML = `<img src="${avatarUrl}" alt="Profile" style="width:100%; height:100%; object-fit:cover; display:block;">`;
 
-  // Initialize View
+  // Init View
   const initialView = location.hash.replace("#", "") || "home";
   const initialBtn = document.querySelector(`.nav-btn[data-view="${initialView}"]`);
   switchView(initialView, initialBtn, false);
@@ -193,10 +190,10 @@ async function handleLogin(e) {
 
 function logout() {
     localStorage.removeItem('san_student');
-    window.location.href = "index.html"; // Reloads to landing page logic
+    window.location.href = "index.html"; 
 }
 
-// --- NAVIGATION & VIEWS ---
+// --- NAVIGATION ---
 
 function switchView(viewName, btn, updateHistory = true) {
   // Hide all sections
@@ -204,17 +201,17 @@ function switchView(viewName, btn, updateHistory = true) {
     el.classList.remove("active");
     el.style.display = "none";
   });
-  // Reset sidebar active states
+  // Deactivate all sidebar buttons
   document.querySelectorAll(".nav-btn").forEach((el) => el.classList.remove("active"));
 
-  // Show target section
+  // Show target
   const targetView = document.getElementById(`view-${viewName}`);
   if (targetView) {
     targetView.style.display = "block";
     setTimeout(() => targetView.classList.add("active"), 10);
   }
 
-  // Activate button (if exists)
+  // Activate button if exists
   if (btn) btn.classList.add("active");
 
   if (updateHistory) history.pushState({ view: viewName }, "", `#${viewName}`);
@@ -275,7 +272,7 @@ async function loadProfile() {
   }
 }
 
-// --- HOME / DASHBOARD DATA ---
+// --- HOME DATA ---
 async function loadHomeData() {
   try {
     const res = await fetch(`${API_URL}/students/${currentStudent.dbId}/courses`);
@@ -343,11 +340,42 @@ async function loadHomeData() {
   }
 }
 
-// --- ADVISING ---
-async function loadAdvisingCatalog() {
+// --- ADVISING (GATEKEEPER + FILTERS) ---
+// Exposed global function for HTML onchange events
+window.loadAdvisingCatalog = async function() {
   try {
+    // 1. GATEKEEPER CHECK: Check Time Slot Access
+    const accessRes = await fetch(`${API_URL}/advising/check-access/${currentStudent.dbId}`);
+    const accessData = await accessRes.json();
+
+    const container = document.getElementById("advisingCatalog");
+    
+    // If blocked, show message and stop
+    if (!accessData.allowed) {
+        if (container) {
+            container.innerHTML = `
+                <div style="text-align:center; padding:50px; background:#fff1f2; border:1px solid #fda4af; border-radius:10px;">
+                    <i class="fas fa-clock" style="font-size:3em; color:#e11d48; margin-bottom:20px;"></i>
+                    <h2 style="color:#9f1239; margin-bottom:10px;">Advising Locked</h2>
+                    <p style="font-size:1.1em; color:#881337; white-space:pre-line;">${accessData.message}</p>
+                </div>
+            `;
+            const confirmBtn = document.getElementById("confirmSlipBtn");
+            if(confirmBtn) confirmBtn.disabled = true;
+        }
+        return; 
+    } else {
+        const confirmBtn = document.getElementById("confirmSlipBtn");
+        if(confirmBtn) confirmBtn.disabled = false;
+    }
+
+    // 2. GET FILTERS from Dropdowns
+    const dept = document.getElementById("advDeptFilter").value;
+    const sem = document.getElementById("advSemFilter").value;
+
+    // 3. FETCH DATA (With filters)
     const [catRes, myRes] = await Promise.all([
-      fetch(`${API_URL}/advising/courses`),
+      fetch(`${API_URL}/advising/courses?dept=${dept}&semester=${sem}`),
       fetch(`${API_URL}/students/${currentStudent.dbId}/courses`),
     ]);
 
@@ -360,7 +388,6 @@ async function loadAdvisingCatalog() {
     const isFullyDropped = enrolledCurrent.length === 0 && droppedCurrent.length > 0;
 
     if (isFullyDropped) {
-      const container = document.getElementById("advisingCatalog");
       if (container) {
         container.innerHTML = `
                 <div style="text-align:center; padding:40px; color:#9f1239; background:#fff1f2; border-radius:10px; border:1px solid #fda4af;">
@@ -373,9 +400,6 @@ async function loadAdvisingCatalog() {
         if (confirmBtn) confirmBtn.disabled = true;
       }
       return;
-    } else {
-      const btn = document.getElementById("confirmSlipBtn");
-      if (btn) btn.disabled = false;
     }
 
     const enrolledCodes = myHistory.filter((c) => c.status === "enrolled").map((c) => c.code);
@@ -384,13 +408,10 @@ async function loadAdvisingCatalog() {
     const undoneCourses = allCatalog.filter((c) => !completedCodes.includes(c.code) && !enrolledCodes.includes(c.code));
     const retakeCourses = allCatalog.filter((c) => completedCodes.includes(c.code) && !enrolledCodes.includes(c.code));
 
-    const container = document.getElementById("advisingCatalog");
-    if (!container) return;
-
     let html = "";
 
     const renderList = (list, title, badgeColor) => {
-      if (list.length === 0) return `<h4 style="margin-top:20px; color:#666;">${title}</h4><p style="font-style:italic; color:#888; margin-bottom:20px;">No courses available.</p>`;
+      if (list.length === 0) return `<h4 style="margin-top:20px; color:#666;">${title}</h4><p style="font-style:italic; color:#888; margin-bottom:20px;">No courses available matching criteria.</p>`;
 
       let sectionHtml = `<h4 style="margin-top:20px; margin-bottom:10px; color:#4F46E5; border-bottom:1px solid #eee; padding-bottom:5px;">${title}</h4>`;
 
@@ -422,8 +443,12 @@ async function loadAdvisingCatalog() {
       return sectionHtml;
     };
 
-    html += renderList(undoneCourses, "Regular Courses (Undone / Dropped)", "#4F46E5");
-    html += renderList(retakeCourses, "Retake Courses (Completed)", "#F59E0B");
+    html += renderList(undoneCourses, "Regular Courses", "#4F46E5");
+    
+    // Only show retake section if we are NOT filtering specific dept (to avoid clutter), OR if there are actually retakes in that dept
+    if(retakeCourses.length > 0) {
+        html += renderList(retakeCourses, "Retake Courses (Completed)", "#F59E0B");
+    }
 
     container.innerHTML = html;
   } catch (error) {
@@ -431,7 +456,8 @@ async function loadAdvisingCatalog() {
   }
 }
 
-function addToSlip(id, code, name, credits) {
+// Exposed to global scope for HTML onclick
+window.addToSlip = function(id, code, name, credits) {
   if (advisingSlip.find((c) => c.id === id)) return;
   const slipCredits = advisingSlip.reduce((sum, c) => sum + c.credits, 0);
   const totalProjected = currentEnrolledCredits + slipCredits + credits;
@@ -445,7 +471,7 @@ function addToSlip(id, code, name, credits) {
   loadAdvisingCatalog();
 }
 
-function removeFromSlip(id) {
+window.removeFromSlip = function(id) {
   advisingSlip = advisingSlip.filter((c) => c.id !== id);
   renderSlip();
   loadAdvisingCatalog();
