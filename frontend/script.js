@@ -13,8 +13,7 @@ let currentEnrolledCredits = 0; // Track credits for validation
     document.head.appendChild(link);
     const fa = document.createElement("link");
     fa.rel = "stylesheet";
-    fa.href =
-      "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css";
+    fa.href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css";
     document.head.appendChild(fa);
   }
 })();
@@ -24,42 +23,82 @@ window.addEventListener("popstate", (event) => {
   if (event.state && event.state.view) {
     switchView(event.state.view, null, false);
   } else {
-    if (currentStudent) switchView("home", null, false);
+    if (currentStudent) {
+        switchView("home", null, false);
+    } else {
+        showLanding();
+    }
   }
 });
 
 // --- INITIALIZATION ---
 document.addEventListener("DOMContentLoaded", () => {
+  checkAuth(); // Determine start page (Landing vs Dashboard)
+
+  // 1. Login Form
   const loginForm = document.getElementById("loginForm");
   if (loginForm) loginForm.addEventListener("submit", handleLogin);
 
+  // 2. Logout
   const logoutBtn = document.getElementById("logoutBtn");
   if (logoutBtn) logoutBtn.addEventListener("click", logout);
 
+  // 3. Sidebar Navigation Buttons
   const navBtns = document.querySelectorAll(".nav-btn:not(#dropSemesterBtn)");
   navBtns.forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.stopImmediatePropagation();
       let viewName = btn.getAttribute("data-view");
-      if (!viewName && btn.id.startsWith("btn-"))
-        viewName = btn.id.replace("btn-", "");
+      if (!viewName && btn.id.startsWith("btn-")) viewName = btn.id.replace("btn-", "");
       if (viewName) switchView(viewName, btn);
     });
   });
 
+  // 4. Logo Click -> Go to Home
+  const navLogo = document.getElementById("navLogo");
+  if (navLogo) {
+    navLogo.addEventListener("click", () => {
+      const homeBtn = document.querySelector('.nav-btn[data-view="home"]');
+      switchView("home", homeBtn);
+    });
+  }
+
+  // 5. Avatar Click -> Go to Profile
+  const userAvatar = document.getElementById("userAvatar");
+  if (userAvatar) {
+    userAvatar.addEventListener("click", () => {
+      // Pass null for btn because Profile doesn't have a sidebar button
+      switchView("profile", null);
+    });
+  }
+
+  // 6. [NEW] Password Toggle Logic
+  const togglePassword = document.getElementById("togglePassword");
+  const passwordInput = document.getElementById("password");
+  if (togglePassword && passwordInput) {
+      togglePassword.addEventListener("click", function () {
+          const type = passwordInput.getAttribute("type") === "password" ? "text" : "password";
+          passwordInput.setAttribute("type", type);
+          
+          // Toggle Icon Class
+          this.classList.toggle("fa-eye");
+          this.classList.toggle("fa-eye-slash");
+      });
+  }
+
+  // 7. Stat Cards (Clickable widgets)
   const statCards = document.querySelectorAll(".stat-card");
   statCards.forEach((card) => {
     card.addEventListener("click", () => {
       const target = card.getAttribute("data-target");
       if (target) {
-        const btn =
-          document.querySelector(`.nav-btn[data-view="${target}"]`) ||
-          document.getElementById(`btn-${target}`);
+        const btn = document.querySelector(`.nav-btn[data-view="${target}"]`) || document.getElementById(`btn-${target}`);
         switchView(target, btn);
       }
     });
   });
 
+  // 8. Action Buttons
   const confirmBtn = document.getElementById("confirmSlipBtn");
   if (confirmBtn) confirmBtn.addEventListener("click", confirmAdvisingSlip);
 
@@ -67,24 +106,67 @@ document.addEventListener("DOMContentLoaded", () => {
   if (dropBtn) dropBtn.addEventListener("click", dropSemester);
 });
 
+// --- AUTH STATE & VIEW CONTROLLERS ---
+
+function checkAuth() {
+    const user = localStorage.getItem('san_student');
+    if (user) {
+        currentStudent = JSON.parse(user);
+        currentStudent.dbId = currentStudent.id || currentStudent._id;
+        showDashboard();
+    } else {
+        showLanding(); // Default start state
+    }
+}
+
+// Global functions for onclick handlers in HTML
+window.showLanding = function() {
+    document.getElementById("landingPage").style.display = "block";
+    document.getElementById("loginPage").style.display = "none";
+    document.getElementById("dashboard").style.display = "none";
+    window.scrollTo(0,0);
+}
+
+window.showLogin = function() {
+    document.getElementById("landingPage").style.display = "none";
+    document.getElementById("loginPage").style.display = "flex"; // Flex to center
+    document.getElementById("dashboard").style.display = "none";
+}
+
+function showDashboard() {
+  document.getElementById("landingPage").style.display = "none";
+  document.getElementById("loginPage").style.display = "none";
+  document.getElementById("dashboard").style.display = "block";
+  
+  // Set Header Info
+  document.getElementById("welcomeMessage").innerText = `Welcome back, ${currentStudent.name.split(" ")[0]}!`;
+  document.getElementById("userName").innerText = currentStudent.name;
+  document.getElementById("userIdDisplay").innerText = `ID: ${currentStudent.student_id}`;
+  
+  // Render Avatar
+  const avatarUrl = currentStudent.avatar || `https://ui-avatars.com/api/?name=${currentStudent.name}&background=4F46E5&color=fff`;
+  document.getElementById("userAvatar").innerHTML = `<img src="${avatarUrl}" alt="Profile">`;
+
+  // Initialize View
+  const initialView = location.hash.replace("#", "") || "home";
+  const initialBtn = document.querySelector(`.nav-btn[data-view="${initialView}"]`);
+  switchView(initialView, initialBtn, false);
+
+  loadHomeData();
+  loadAnnouncements();
+}
+
 async function handleLogin(e) {
   e.preventDefault();
-
   const inputVal = document.getElementById("studentId").value;
   const password = document.getElementById("password").value;
   const errEl = document.getElementById("errorMessage");
 
-  const isAdmin = inputVal.includes("@");
-
-  const endpoint = `${API_URL}/login`;
-
-  const payload = { studentId: inputVal, password };
-
   try {
-    const res = await fetch(endpoint, {
+    const res = await fetch(`${API_URL}/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ studentId: inputVal, password }),
     });
 
     const data = await res.json();
@@ -95,9 +177,9 @@ async function handleLogin(e) {
         window.location.href = "admin.html";
         return;
       }
-
       currentStudent = data.student;
       currentStudent.dbId = data.student.id || data.student._id;
+      localStorage.setItem('san_student', JSON.stringify(currentStudent));
       showDashboard();
     } else {
       errEl.innerText = data.error || "Login failed";
@@ -109,57 +191,41 @@ async function handleLogin(e) {
   }
 }
 
-
-
-function showDashboard() {
-  document.getElementById("loginPage").style.display = "none";
-  document.getElementById("dashboard").style.display = "block";
-  document.getElementById("welcomeMessage").innerText = `Welcome back, ${
-    currentStudent.name.split(" ")[0]
-  }!`;
-  document.getElementById("userName").innerText = currentStudent.name;
-  document.getElementById(
-    "userIdDisplay"
-  ).innerText = `ID: ${currentStudent.student_id}`;
-  document.getElementById("userAvatar").innerText =
-    currentStudent.name.charAt(0);
-
-  const initialView = location.hash.replace("#", "") || "home";
-  const initialBtn = document.querySelector(
-    `.nav-btn[data-view="${initialView}"]`
-  );
-  switchView(initialView, initialBtn, false);
-
-  loadHomeData();
-  loadAnnouncements();
+function logout() {
+    localStorage.removeItem('san_student');
+    window.location.href = "index.html"; // Reloads to landing page logic
 }
 
+// --- NAVIGATION & VIEWS ---
+
 function switchView(viewName, btn, updateHistory = true) {
+  // Hide all sections
   document.querySelectorAll(".view-section").forEach((el) => {
     el.classList.remove("active");
     el.style.display = "none";
   });
-  document
-    .querySelectorAll(".nav-btn")
-    .forEach((el) => el.classList.remove("active"));
+  // Reset sidebar active states
+  document.querySelectorAll(".nav-btn").forEach((el) => el.classList.remove("active"));
 
+  // Show target section
   const targetView = document.getElementById(`view-${viewName}`);
   if (targetView) {
     targetView.style.display = "block";
     setTimeout(() => targetView.classList.add("active"), 10);
   }
 
+  // Activate button (if exists)
   if (btn) btn.classList.add("active");
 
   if (updateHistory) history.pushState({ view: viewName }, "", `#${viewName}`);
-
+  
   if (pollingInterval) clearInterval(pollingInterval);
 
+  // Load Data
   if (viewName === "profile") loadProfile();
   if (viewName === "schedule") loadSchedule();
   if (viewName === "grades") loadGrades();
   if (viewName === "financials") loadFinancials();
-
   if (viewName === "advising") {
     loadAdvisingCatalog();
     pollingInterval = setInterval(loadAdvisingCatalog, 3000);
@@ -172,105 +238,77 @@ async function loadProfile() {
     const res = await fetch(`${API_URL}/students/${currentStudent.dbId}`);
     const student = await res.json();
 
-    const gRes = await fetch(
-      `${API_URL}/students/${currentStudent.dbId}/grades`
-    );
+    const gRes = await fetch(`${API_URL}/students/${currentStudent.dbId}/grades`);
     const grades = await gRes.json();
 
     const cgpa = calculateCGPA(grades);
-    const completedCredits = grades.reduce(
-      (sum, g) => sum + (g.credits || 3),
-      0
-    );
+    const completedCredits = grades.reduce((sum, g) => sum + (g.credits || 3), 0);
 
-    document.getElementById("pAvatar").innerText = student.name.charAt(0);
+    // Profile Avatar
+    const avatarUrl = student.avatar || `https://ui-avatars.com/api/?name=${student.name}&background=4F46E5&color=fff`;
+    document.getElementById("pAvatar").innerHTML = `<img src="${avatarUrl}" style="width:100%; height:100%; object-fit:cover;">`;
+
     document.getElementById("pName").innerText = student.name;
     document.getElementById("pProgram").innerText = student.program || "N/A";
     document.getElementById("pId").innerText = student.student_id;
     document.getElementById("pDept").innerText = student.department;
 
     document.getElementById("pUniqueId").innerText = student.unique_id || "N/A";
-    document.getElementById("pAdmitted").innerText =
-      student.admitted_semester || "N/A";
+    document.getElementById("pAdmitted").innerText = student.admitted_semester || "N/A";
     document.getElementById("pCredits").innerText = completedCredits;
     document.getElementById("pCgpa").innerText = cgpa;
 
     document.getElementById("pDob").innerText = student.dob || "N/A";
     document.getElementById("pBlood").innerText = student.blood_group || "N/A";
     document.getElementById("pNid").innerText = student.nid || "N/A";
-    document.getElementById("pMarital").innerText =
-      student.marital_status || "N/A";
+    document.getElementById("pMarital").innerText = student.marital_status || "N/A";
 
     document.getElementById("pEmail").innerText = student.email;
     document.getElementById("pPhone").innerText = student.phone || "N/A";
-    document.getElementById("pPresent").innerText =
-      student.present_address || "N/A";
-    document.getElementById("pPermanent").innerText =
-      student.permanent_address || "N/A";
+    document.getElementById("pPresent").innerText = student.present_address || "N/A";
+    document.getElementById("pPermanent").innerText = student.permanent_address || "N/A";
 
-    document.getElementById("pAdvisorName").innerText =
-      student.advisor_name || "Not Assigned";
-    document.getElementById("pAdvisorEmail").innerText =
-      student.advisor_email || "";
+    document.getElementById("pAdvisorName").innerText = student.advisor_name || "Not Assigned";
+    document.getElementById("pAdvisorEmail").innerText = student.advisor_email || "";
   } catch (e) {
     console.error("Profile load error:", e);
   }
 }
 
-// --- CORE DATA ---
+// --- HOME / DASHBOARD DATA ---
 async function loadHomeData() {
   try {
-    const res = await fetch(
-      `${API_URL}/students/${currentStudent.dbId}/courses`
-    );
+    const res = await fetch(`${API_URL}/students/${currentStudent.dbId}/courses`);
     const courses = await res.json();
 
     const currentCourses = courses.filter((c) => c.status === "enrolled");
-    const completedCourses = courses.filter(
-      (c) => c.status !== "enrolled" && c.status !== "dropped"
-    );
-    const droppedCourses = courses.filter(
-      (c) => c.status === "dropped" && c.semester === "Fall-2025"
-    );
+    const completedCourses = courses.filter((c) => c.status !== "enrolled" && c.status !== "dropped");
+    const droppedCourses = courses.filter((c) => c.status === "dropped" && c.semester === "Fall-2025");
 
-    currentEnrolledCredits = currentCourses.reduce(
-      (sum, c) => sum + (c.credits || 0),
-      0
-    );
+    currentEnrolledCredits = currentCourses.reduce((sum, c) => sum + (c.credits || 0), 0);
 
-    document.getElementById(
-      "coursesCount"
-    ).innerHTML = `${currentCourses.length} <div style="font-size:0.6em; margin-top:5px; font-weight:normal;">(${currentEnrolledCredits} Credits)</div>`;
+    document.getElementById("coursesCount").innerHTML = 
+        `${currentCourses.length} <div style="font-size:0.6em; margin-top:5px; font-weight:normal;">(${currentEnrolledCredits} Credits)</div>`;
 
-    document.getElementById("creditsCount").innerText = completedCourses.reduce(
-      (sum, c) => sum + (c.credits || 0),
-      0
-    );
+    document.getElementById("creditsCount").innerText = completedCourses.reduce((sum, c) => sum + (c.credits || 0), 0);
 
-    const gRes = await fetch(
-      `${API_URL}/students/${currentStudent.dbId}/grades`
-    );
+    const gRes = await fetch(`${API_URL}/students/${currentStudent.dbId}/grades`);
     const grades = await gRes.json();
     document.getElementById("gpaDisplay").innerText = calculateCGPA(grades);
-    document.getElementById("semestersCount").innerText = new Set(
-      grades.map((g) => g.semester)
-    ).size;
+    document.getElementById("semestersCount").innerText = new Set(grades.map((g) => g.semester)).size;
 
     const listContainer = document.getElementById("coursesList");
     const dropBtn = document.getElementById("dropSemesterBtn");
 
-    const isFullyDropped =
-      currentCourses.length === 0 && droppedCourses.length > 0;
+    const isFullyDropped = currentCourses.length === 0 && droppedCourses.length > 0;
 
     if (isFullyDropped) {
-      // Semester is FULLY dropped
       if (dropBtn) {
         dropBtn.disabled = true;
         dropBtn.style.opacity = "0.5";
         dropBtn.style.cursor = "not-allowed";
         dropBtn.title = "Semester already dropped";
       }
-
       listContainer.innerHTML = `
             <div style="text-align:center; padding:30px; background:#fff1f2; border:1px solid #fda4af; border-radius:10px; color:#9f1239;">
                 <i class="fas fa-ban" style="font-size:2em; margin-bottom:10px;"></i>
@@ -279,7 +317,6 @@ async function loadHomeData() {
             </div>
         `;
     } else {
-      // Semester is active
       if (dropBtn) {
         dropBtn.disabled = false;
         dropBtn.style.opacity = "1";
@@ -288,9 +325,7 @@ async function loadHomeData() {
       }
 
       if (currentCourses.length > 0) {
-        listContainer.innerHTML = currentCourses
-          .map(
-            (c) => `
+        listContainer.innerHTML = currentCourses.map((c) => `
                 <div style="padding:15px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
                     <div>
                         <div style="font-weight:700; color:#374151;">${c.code} - ${c.name}</div>
@@ -298,12 +333,9 @@ async function loadHomeData() {
                     </div>
                     <span style="background:#e0e7ff; color:#4338ca; padding:4px 10px; border-radius:6px; font-size:0.8em; font-weight:600;">${c.credits} Cr</span>
                 </div>
-            `
-          )
-          .join("");
+            `).join("");
       } else {
-        listContainer.innerHTML =
-          '<p style="color:#666; font-style:italic; padding:10px;">No enrolled courses for this semester.</p>';
+        listContainer.innerHTML = '<p style="color:#666; font-style:italic; padding:10px;">No enrolled courses for this semester.</p>';
       }
     }
   } catch (error) {
@@ -311,8 +343,7 @@ async function loadHomeData() {
   }
 }
 
-// --- ADVANCED ADVISING MODULE ---
-
+// --- ADVISING ---
 async function loadAdvisingCatalog() {
   try {
     const [catRes, myRes] = await Promise.all([
@@ -323,15 +354,10 @@ async function loadAdvisingCatalog() {
     const allCatalog = await catRes.json();
     const myHistory = await myRes.json();
 
-    const enrolledCurrent = myHistory.filter(
-      (c) => c.status === "enrolled" && c.semester === "Fall-2025"
-    );
-    const droppedCurrent = myHistory.filter(
-      (c) => c.status === "dropped" && c.semester === "Fall-2025"
-    );
+    const enrolledCurrent = myHistory.filter((c) => c.status === "enrolled" && c.semester === "Fall-2025");
+    const droppedCurrent = myHistory.filter((c) => c.status === "dropped" && c.semester === "Fall-2025");
 
-    const isFullyDropped =
-      enrolledCurrent.length === 0 && droppedCurrent.length > 0;
+    const isFullyDropped = enrolledCurrent.length === 0 && droppedCurrent.length > 0;
 
     if (isFullyDropped) {
       const container = document.getElementById("advisingCatalog");
@@ -352,26 +378,11 @@ async function loadAdvisingCatalog() {
       if (btn) btn.disabled = false;
     }
 
-    // 2. Identify Lists
-    const enrolledCodes = myHistory
-      .filter((c) => c.status === "enrolled")
-      .map((c) => c.code);
+    const enrolledCodes = myHistory.filter((c) => c.status === "enrolled").map((c) => c.code);
+    const completedCodes = myHistory.filter((c) => c.status === "completed").map((c) => c.code);
 
-    // FIX 1: Codes of courses that are COMPLETED (Grade exists) -> These are retakeable.
-    const completedCodes = myHistory
-      .filter((c) => c.status === "completed")
-      .map((c) => c.code);
-
-    // 3. Filter Logic
-    // Undone (Regular/Dropped): NOT completed AND NOT currently enrolled.
-    const undoneCourses = allCatalog.filter(
-      (c) => !completedCodes.includes(c.code) && !enrolledCodes.includes(c.code)
-    );
-
-    // Retake: Is in completedCodes AND Not currently enrolled.
-    const retakeCourses = allCatalog.filter(
-      (c) => completedCodes.includes(c.code) && !enrolledCodes.includes(c.code)
-    );
+    const undoneCourses = allCatalog.filter((c) => !completedCodes.includes(c.code) && !enrolledCodes.includes(c.code));
+    const retakeCourses = allCatalog.filter((c) => completedCodes.includes(c.code) && !enrolledCodes.includes(c.code));
 
     const container = document.getElementById("advisingCatalog");
     if (!container) return;
@@ -379,20 +390,16 @@ async function loadAdvisingCatalog() {
     let html = "";
 
     const renderList = (list, title, badgeColor) => {
-      if (list.length === 0)
-        return `<h4 style="margin-top:20px; color:#666;">${title}</h4><p style="font-style:italic; color:#888; margin-bottom:20px;">No courses available.</p>`;
+      if (list.length === 0) return `<h4 style="margin-top:20px; color:#666;">${title}</h4><p style="font-style:italic; color:#888; margin-bottom:20px;">No courses available.</p>`;
 
       let sectionHtml = `<h4 style="margin-top:20px; margin-bottom:10px; color:#4F46E5; border-bottom:1px solid #eee; padding-bottom:5px;">${title}</h4>`;
 
-      sectionHtml += list
-        .map((c) => {
+      sectionHtml += list.map((c) => {
           const isFull = c.seats_available <= 0;
           const inSlip = advisingSlip.find((s) => s.id === c.id);
-
           let btnDisabled = isFull || inSlip ? "disabled" : "";
           let btnText = inSlip ? "In Slip" : isFull ? "Full" : "Add";
           let badgeClass = isFull ? "seat-full" : "seat-open";
-
           const code = c.code;
           const name = c.name.replace(/'/g, "\\'");
 
@@ -411,17 +418,12 @@ async function loadAdvisingCatalog() {
                     <button class="add-btn" onclick="addToSlip(${c.id}, '${code}', '${name}', ${c.credits})" ${btnDisabled}>${btnText}</button>
                 </div>
             </div>`;
-        })
-        .join("");
+        }).join("");
       return sectionHtml;
     };
 
-    html += renderList(
-      undoneCourses,
-      "Regular Courses (Undone / Dropped)",
-      "#4F46E5"
-    );
-    html += renderList(retakeCourses, "Retake Courses (Completed)", "#F59E0B"); // Orange for retakes
+    html += renderList(undoneCourses, "Regular Courses (Undone / Dropped)", "#4F46E5");
+    html += renderList(retakeCourses, "Retake Courses (Completed)", "#F59E0B");
 
     container.innerHTML = html;
   } catch (error) {
@@ -431,17 +433,13 @@ async function loadAdvisingCatalog() {
 
 function addToSlip(id, code, name, credits) {
   if (advisingSlip.find((c) => c.id === id)) return;
-
   const slipCredits = advisingSlip.reduce((sum, c) => sum + c.credits, 0);
   const totalProjected = currentEnrolledCredits + slipCredits + credits;
 
   if (totalProjected > 15) {
-    alert(
-      `Credit Limit Exceeded!\n\nCurrent Enrolled: ${currentEnrolledCredits}\nIn Slip: ${slipCredits}\nAdding: ${credits}\nTotal Projected: ${totalProjected}\n\nMaximum allowed is 15 credits per semester.`
-    );
+    alert(`Credit Limit Exceeded!\n\nMaximum allowed is 15 credits per semester.`);
     return;
   }
-
   advisingSlip.push({ id, code, name, credits });
   renderSlip();
   loadAdvisingCatalog();
@@ -460,39 +458,29 @@ function renderSlip() {
   const totalCredits = advisingSlip.reduce((sum, c) => sum + c.credits, 0);
   const projectedTotal = currentEnrolledCredits + totalCredits;
 
-  document.getElementById("slipTotalCredits").innerText = totalCredits;
-  document.getElementById(
-    "slipTotalCredits"
-  ).innerHTML = `${totalCredits} <small style="color:#666; font-weight:normal; font-size:0.8em;">(New Total: ${projectedTotal})</small>`;
+  const totalEl = document.getElementById("slipTotalCredits");
+  if(totalEl) totalEl.innerHTML = `${totalCredits} <small style="color:#666; font-weight:normal; font-size:0.8em;">(New Total: ${projectedTotal})</small>`;
 
   if (advisingSlip.length === 0) {
-    list.innerHTML =
-      '<div class="empty-state"><i class="fas fa-shopping-basket"></i><p>Slip is empty.</p></div>';
+    list.innerHTML = '<div class="empty-state"><i class="fas fa-shopping-basket"></i><p>Slip is empty.</p></div>';
     return;
   }
 
-  list.innerHTML = advisingSlip
-    .map(
-      (c) => `
+  list.innerHTML = advisingSlip.map((c) => `
         <div class="slip-item">
             <div><strong>${c.code}</strong> <small>(${c.credits} Cr)</small><br><small>${c.name}</small></div>
             <button class="remove-btn" onclick="removeFromSlip(${c.id})"><i class="fas fa-times"></i></button>
         </div>
-    `
-    )
-    .join("");
+    `).join("");
 }
 
 async function confirmAdvisingSlip() {
   if (advisingSlip.length === 0) return alert("Advising slip is empty.");
-
   const slipCredits = advisingSlip.reduce((sum, c) => sum + c.credits, 0);
   const totalProjected = currentEnrolledCredits + slipCredits;
 
   if (totalProjected < 9) {
-    alert(
-      `Registration Failed: Minimum Credit Requirement Not Met.\n\nCurrent Enrolled: ${currentEnrolledCredits}\nIn Slip: ${slipCredits}\nTotal Projected: ${totalProjected}\n\nYou must take at least 9 credits.`
-    );
+    alert(`Registration Failed: Minimum Credit Requirement Not Met.\n\nYou must take at least 9 credits.`);
     return;
   }
 
@@ -512,7 +500,6 @@ async function confirmAdvisingSlip() {
       renderSlip();
       loadHomeData();
       loadAdvisingCatalog();
-
       const finBtn = document.querySelector('.nav-btn[data-view="financials"]');
       if (finBtn) switchView("financials", finBtn);
     } else {
@@ -523,24 +510,17 @@ async function confirmAdvisingSlip() {
   }
 }
 
-// --- OTHER FUNCTIONS ---
+// --- SCHEDULE ---
 async function loadSchedule() {
   try {
-    const res = await fetch(
-      `${API_URL}/students/${currentStudent.dbId}/courses`
-    );
+    const res = await fetch(`${API_URL}/students/${currentStudent.dbId}/courses`);
     const courses = await res.json();
     const current = courses.filter((c) => c.status === "enrolled");
     const history = courses.filter((c) => c.status !== "enrolled");
-
-    const currentCredits = current.reduce(
-      (sum, c) => sum + (c.credits || 0),
-      0
-    );
+    const currentCredits = current.reduce((sum, c) => sum + (c.credits || 0), 0);
 
     let html = "";
 
-    // Current
     if (current.length > 0) {
       const currentSem = current[0].semester || "Fall-2025 (Current)";
       let themeClass = "theme-default";
@@ -569,7 +549,6 @@ async function loadSchedule() {
       html += `<div class="card"><p>No active courses.</p></div>`;
     }
 
-    // History
     if (history.length > 0) {
       html += `<h3 style="margin: 40px 0 20px 0; color:#6b7280; font-size:1.1em; border-bottom:2px solid #eee; padding-bottom:10px;">Class History</h3>`;
       const historyBySem = {};
@@ -598,25 +577,17 @@ async function loadSchedule() {
   }
 }
 
-// --- SAFE DROP: Prevents accidental drops & respects min credits ---
 async function dropCourse(courseId) {
-  const confirmation = prompt(
-    "SECURITY CHECK:\n\nTo confirm dropping this course, type 'DROP' below.\n\nWarning: This action is irreversible and fees may apply."
-  );
-
+  const confirmation = prompt("SECURITY CHECK:\n\nTo confirm dropping this course, type 'DROP' below.\n\nWarning: This action is irreversible and fees may apply.");
   if (confirmation !== "DROP") {
-    alert("Drop cancelled. You must type 'DROP' (all caps) to confirm.");
+    alert("Drop cancelled.");
     return;
   }
-
   try {
     const res = await fetch(`${API_URL}/students/drop-course`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        studentId: currentStudent.dbId,
-        courseId: courseId,
-      }),
+      body: JSON.stringify({ studentId: currentStudent.dbId, courseId: courseId }),
     });
     const data = await res.json();
     if (data.success) {
@@ -631,13 +602,12 @@ async function dropCourse(courseId) {
   }
 }
 
+// --- GRADES ---
 async function loadGrades() {
   const container = document.getElementById("gradesContainer");
   container.innerHTML = "Loading...";
   try {
-    const res = await fetch(
-      `${API_URL}/students/${currentStudent.dbId}/grades`
-    );
+    const res = await fetch(`${API_URL}/students/${currentStudent.dbId}/grades`);
     const grades = await res.json();
     if (grades.length === 0) {
       container.innerHTML = "No grades.";
@@ -652,37 +622,21 @@ async function loadGrades() {
 
     let html = "";
     Object.keys(semesters).forEach((sem) => {
-      let semPts = 0,
-        semCreds = 0;
-      let rows = semesters[sem]
-        .map((g) => {
+      let semPts = 0, semCreds = 0;
+      let rows = semesters[sem].map((g) => {
           const pts = getPoints(g.grade);
           const cr = g.credits || 3;
           semPts += pts * cr;
           semCreds += cr;
-          let gradeClass = g.grade.startsWith("A")
-            ? "grade-A"
-            : g.grade.startsWith("B")
-            ? "grade-B"
-            : "grade-C";
-          return `<tr><td>${g.code}</td><td>${
-            g.course_name
-          }</td><td>${cr}</td><td><span class="grade-pill ${gradeClass}">${
-            g.grade
-          }</span></td><td>${pts.toFixed(2)}</td></tr>`;
-        })
-        .join("");
+          let gradeClass = g.grade.startsWith("A") ? "grade-A" : g.grade.startsWith("B") ? "grade-B" : "grade-C";
+          return `<tr><td>${g.code}</td><td>${g.course_name}</td><td>${cr}</td><td><span class="grade-pill ${gradeClass}">${g.grade}</span></td><td>${pts.toFixed(2)}</td></tr>`;
+        }).join("");
 
       const sgpa = semCreds ? (semPts / semCreds).toFixed(2) : "0.00";
-      let themeClass = sem.includes("Spring")
-        ? "theme-spring"
-        : sem.includes("Summer")
-        ? "theme-summer"
-        : "theme-fall";
+      let themeClass = sem.includes("Spring") ? "theme-spring" : sem.includes("Summer") ? "theme-summer" : "theme-fall";
       html += `<div class="semester-block"><div class="semester-header ${themeClass}"><h4>${sem}</h4><span class="sgpa-badge">SGPA: ${sgpa}</span></div><table><thead><tr><th>Code</th><th>Course</th><th>Cr</th><th>Grade</th><th>Pts</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     });
-    document.getElementById("totalCgpaBadge").innerText =
-      "CGPA: " + calculateCGPA(grades);
+    document.getElementById("totalCgpaBadge").innerText = "CGPA: " + calculateCGPA(grades);
     container.innerHTML = html;
   } catch (error) {
     console.error(error);
@@ -690,22 +644,11 @@ async function loadGrades() {
 }
 
 function getPoints(g) {
-  const m = {
-    A: 4.0,
-    "A-": 3.7,
-    "B+": 3.3,
-    B: 3.0,
-    "B-": 2.7,
-    "C+": 2.3,
-    C: 2.0,
-    D: 1.0,
-    F: 0.0,
-  };
+  const m = { A: 4.0, "A-": 3.7, "B+": 3.3, B: 3.0, "B-": 2.7, "C+": 2.3, C: 2.0, D: 1.0, F: 0.0 };
   return m[g] || 0.0;
 }
 function calculateCGPA(grades) {
-  let pts = 0,
-    crs = 0;
+  let pts = 0, crs = 0;
   grades.forEach((g) => {
     let c = g.credits || 3;
     pts += getPoints(g.grade) * c;
@@ -714,19 +657,13 @@ function calculateCGPA(grades) {
   return crs ? (pts / crs).toFixed(2) : "0.00";
 }
 
+// --- FINANCIALS ---
 async function loadFinancials() {
-  const res = await fetch(
-    `${API_URL}/students/${currentStudent.dbId}/financials`
-  );
+  const res = await fetch(`${API_URL}/students/${currentStudent.dbId}/financials`);
   const d = await res.json();
-
-  const courseRes = await fetch(
-    `${API_URL}/students/${currentStudent.dbId}/courses`
-  );
+  const courseRes = await fetch(`${API_URL}/students/${currentStudent.dbId}/courses`);
   const courses = await courseRes.json();
-  const droppedCurrent = courses.filter(
-    (c) => c.status === "dropped" && c.semester === "Fall-2025"
-  );
+  const droppedCurrent = courses.filter((c) => c.status === "dropped" && c.semester === "Fall-2025");
   const enrolledCurrent = courses.filter((c) => c.status === "enrolled");
 
   let amount = d.total;
@@ -737,44 +674,32 @@ async function loadFinancials() {
     status = "Refunded";
   }
 
-  document.getElementById(
-    "financialsContainer"
-  ).innerHTML = `<div style="background:#f0fdf4; padding:30px; text-align:center; border-radius:16px; border:1px solid #bbf7d0;"><h2 style="color:#166534; font-size:2.5em; margin:10px 0;">$${amount}</h2><p style="color:#15803d; font-weight:bold;">Status: ${status}</p><p style="color:#666;">Due Date: ${d.dueDate}</p></div>`;
+  document.getElementById("financialsContainer").innerHTML = `<div style="background:#f0fdf4; padding:30px; text-align:center; border-radius:16px; border:1px solid #bbf7d0;"><h2 style="color:#166534; font-size:2.5em; margin:10px 0;">$${amount}</h2><p style="color:#15803d; font-weight:bold;">Status: ${status}</p><p style="color:#666;">Due Date: ${d.dueDate}</p></div>`;
 }
 
+// --- DROP SEMESTER ---
 async function dropSemester() {
-  const confirmation = prompt(
-    "SECURITY CHECK:\n\nTo confirm dropping the ENTIRE SEMESTER, type 'DROP' below.\n\nThis will remove ALL enrolled courses."
-  );
-
+  const confirmation = prompt("SECURITY CHECK:\n\nTo confirm dropping the ENTIRE SEMESTER, type 'DROP' below.\n\nThis will remove ALL enrolled courses.");
   if (confirmation !== "DROP") {
-    alert("Drop cancelled. You must type 'DROP' (all caps) to confirm.");
+    alert("Drop cancelled.");
     return;
   }
-
   await fetch(`${API_URL}/students/drop-semester`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ studentId: currentStudent.dbId }),
   });
   alert("Semester Dropped.");
-
   loadHomeData();
   loadSchedule();
   switchView("home", document.querySelector('.nav-btn[data-view="home"]'));
 }
 
+// --- ANNOUNCEMENTS ---
 async function loadAnnouncements() {
   const res = await fetch(`${API_URL}/announcements`);
   const data = await res.json();
-  document.getElementById("announcementsList").innerHTML = data
-    .map(
-      (a) =>
+  document.getElementById("announcementsList").innerHTML = data.map((a) =>
         `<div style="padding:15px; border-bottom:1px solid #f3f4f6;"><div style="font-weight:700; color:#374151; margin-bottom:4px;">${a.title}</div><div style="font-size:0.9em; color:#6b7280; line-height:1.4;">${a.content}</div></div>`
-    )
-    .join("");
-}
-
-function logout() {
-  window.location.reload();
+    ).join("");
 }

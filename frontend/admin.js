@@ -3,50 +3,85 @@ let currentEditingStudentId = null; // Tracks the DB ID of the student being edi
 
 // --- INITIALIZATION ---
 document.addEventListener("DOMContentLoaded", () => {
-  // Initial Load
+  // 1. Initial Data Load
   loadStudents();
 
-  // Event Listeners
-  document
-    .getElementById("addCourseForm")
-    .addEventListener("submit", addCourse);
+  // 2. Event Listeners for Forms
+  document.getElementById("addCourseForm").addEventListener("submit", addCourse);
   document.getElementById("gradeForm").addEventListener("submit", uploadGrade);
-  document
-    .getElementById("announcementForm")
-    .addEventListener("submit", postAnnouncement);
-  document
-    .getElementById("addSemesterForm")
-    .addEventListener("submit", addSemester);
-  document
-    .getElementById("newStudentForm")
-    .addEventListener("submit", registerStudent);
+  document.getElementById("announcementForm").addEventListener("submit", postAnnouncement);
+  document.getElementById("addSemesterForm").addEventListener("submit", addSemester);
+  document.getElementById("newStudentForm").addEventListener("submit", registerStudent);
   document.getElementById("addAdminForm").addEventListener("submit", addAdmin);
+  document.getElementById("editStudentForm").addEventListener("submit", updateStudentProfile);
 
-  // Edit Student Profile Save
-  document
-    .getElementById("editStudentForm")
-    .addEventListener("submit", updateStudentProfile);
+  // 3. Logo Click -> Go to Overview
+  const adminLogo = document.getElementById("adminNavLogo");
+  if (adminLogo) {
+    adminLogo.addEventListener("click", () => {
+      const overviewBtn = document.querySelector('.nav-btn[onclick*="overview"]');
+      switchAdminView("overview", overviewBtn);
+    });
+  }
+
+  // 4. Setup Admin Avatar (Rendering & Click to Profile)
+  setupAdminAvatar();
 });
+
+// --- ADMIN AVATAR & PROFILE LOGIC ---
+function setupAdminAvatar() {
+    // Get Admin data from Session Storage (set during login in script.js)
+    // Note: Ensure your login logic in script.js saves admin data to sessionStorage
+    const adminData = JSON.parse(sessionStorage.getItem('adminUser'));
+    const avatarEl = document.querySelector('.navbar .user-avatar');
+    
+    if (adminData && avatarEl) {
+        // Update Name in Navbar
+        document.getElementById("adminName").innerText = adminData.name;
+
+        // Generate Image URL based on name
+        const imgUrl = `https://ui-avatars.com/api/?name=${adminData.name}&background=dc2626&color=fff`;
+        
+        // Render Image in Navbar
+        avatarEl.innerHTML = `<img src="${imgUrl}" alt="Admin">`;
+        
+        // Add Click Listener
+        avatarEl.addEventListener('click', () => {
+            loadAdminProfile(adminData);
+            switchAdminView('profile', null);
+        });
+    }
+}
+
+function loadAdminProfile(admin) {
+    document.getElementById('adminProfileName').innerText = admin.name;
+    document.getElementById('adminProfileEmail').innerText = admin.email;
+    // Larger image for profile view
+    document.getElementById('adminProfileImg').src = `https://ui-avatars.com/api/?name=${admin.name}&background=dc2626&color=fff&size=128`;
+}
 
 // --- NAVIGATION ---
 function switchAdminView(viewName, btn) {
-  document
-    .querySelectorAll(".view-section")
-    .forEach((el) => el.classList.remove("active"));
-  document
-    .querySelectorAll(".nav-btn")
-    .forEach((el) => el.classList.remove("active"));
+  // Hide all views
+  document.querySelectorAll(".view-section").forEach((el) => el.classList.remove("active"));
+  // Deactivate all sidebar buttons
+  document.querySelectorAll(".nav-btn").forEach((el) => el.classList.remove("active"));
 
+  // Show target view
   const target = document.getElementById(`view-${viewName}`);
   if (target) target.classList.add("active");
+  
+  // Highlight sidebar button if it exists
   if (btn) btn.classList.add("active");
 
+  // Load specific data
   if (viewName === "students") loadStudents();
   if (viewName === "financials") loadFinancials();
   if (viewName === "faculty") loadFaculty();
 }
 
 function logout() {
+  sessionStorage.removeItem('adminUser');
   window.location.href = "index.html";
 }
 
@@ -63,34 +98,23 @@ async function loadStudents() {
     const tbody = document.getElementById("studentList");
 
     if (students.length === 0) {
-      tbody.innerHTML =
-        '<tr><td colspan="5" style="text-align:center;">No students found.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No students found.</td></tr>';
       return;
     }
 
-    tbody.innerHTML = students
-      .map(
-        (s) => `
+    tbody.innerHTML = students.map((s) => `
             <tr>
                 <td><strong>${s.student_id}</strong></td>
                 <td>${s.name}</td>
                 <td>${s.department}</td>
                 <td>${s.advisor_name || "None"}</td>
                 <td>
-                    <button onclick="openEditStudentModal('${s.student_id}', ${
-          s.id
-        })" class="action-btn" title="Edit" style="color:#4F46E5;"><i class="fas fa-edit"></i></button>
-                    <button onclick="adminDropSemester(${
-                      s.id
-                    })" class="action-btn btn-delete" title="Drop Semester"><i class="fas fa-ban"></i></button>
-                    <button onclick="deleteStudent('${
-                      s.student_id
-                    }')" class="action-btn btn-delete" title="Delete Student"><i class="fas fa-trash"></i></button>
+                    <button onclick="openEditStudentModal('${s.student_id}', ${s.id})" class="action-btn" title="Edit" style="color:#4F46E5;"><i class="fas fa-edit"></i></button>
+                    <button onclick="adminDropSemester(${s.id})" class="action-btn btn-delete" title="Drop Semester"><i class="fas fa-ban"></i></button>
+                    <button onclick="deleteStudent('${s.student_id}')" class="action-btn btn-delete" title="Delete Student"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>
-        `
-      )
-      .join("");
+        `).join("");
   } catch (e) {
     console.error(e);
   }
@@ -99,6 +123,7 @@ async function loadStudents() {
 function searchStudents() {
   loadStudents();
 }
+
 function openAddStudentModal() {
   document.getElementById("studentModal").style.display = "flex";
 }
@@ -224,13 +249,10 @@ async function loadAdminStudentCourses(dbId) {
   const listDiv = document.getElementById("adminStudentCoursesList");
 
   if (enrolled.length === 0) {
-    listDiv.innerHTML =
-      '<p style="color:#666; font-style:italic; padding:10px; text-align:center;">No active courses.</p>';
+    listDiv.innerHTML = '<p style="color:#666; font-style:italic; padding:10px; text-align:center;">No active courses.</p>';
   } else {
     listDiv.innerHTML = `<table style="width:100%; font-size:0.9em; border-collapse: collapse;">
-            ${enrolled
-              .map(
-                (c) => `
+            ${enrolled.map((c) => `
                 <tr style="border-bottom:1px solid #eee;">
                     <td style="padding:8px;"><b>${c.code}</b></td>
                     <td style="padding:8px;">${c.name}</td>
@@ -240,9 +262,7 @@ async function loadAdminStudentCourses(dbId) {
                         </button>
                     </td>
                 </tr>
-            `
-              )
-              .join("")}
+            `).join("")}
         </table>`;
   }
 
@@ -263,28 +283,21 @@ async function loadAdminAvailableCourses(dbId) {
       .filter((c) => c.status === "enrolled")
       .map((c) => c.code);
 
-    // Available: Everything in catalog NOT currently enrolled
-    // (Includes never taken + dropped + completed)
     const availableCourses = allCatalog.filter(
       (c) => !enrolledCodes.includes(c.code)
     );
 
     const inputEl = document.getElementById("adminAddCourseCode");
 
-    // Create HTML for select options
     let optionsHtml = `<option value="" disabled selected>Select Course to Enroll...</option>`;
-    optionsHtml += availableCourses
-      .map(
-        (c) =>
-          `<option value="${c.code}">${c.code} - ${c.name} (${c.credits} Cr)</option>`
-      )
-      .join("");
+    optionsHtml += availableCourses.map(
+        (c) => `<option value="${c.code}">${c.code} - ${c.name} (${c.credits} Cr)</option>`
+      ).join("");
 
-    // Replace input with select if needed, or just update innerHTML
     if (inputEl.tagName === "INPUT") {
       const select = document.createElement("select");
       select.id = "adminAddCourseCode";
-      select.className = "admin-input"; // Reusing generic input class for styling consistency
+      select.className = "admin-input";
       select.style.flex = "1";
       select.innerHTML = optionsHtml;
       inputEl.parentNode.replaceChild(select, inputEl);
@@ -314,7 +327,6 @@ async function adminAddCourseToStudent() {
 
     if (data.success) {
       alert("Course Added!");
-      // Reload lists and dropdown
       loadAdminStudentCourses(currentEditingStudentId);
     } else {
       alert("Error: " + data.error);
@@ -355,7 +367,6 @@ async function adminDropSemesterForStudent() {
 }
 
 async function adminDropSemester(dbId) {
-  // Quick drop from main list
   if (!confirm("Drop Semester for this student?")) return;
   await fetch(`${API_URL}/admin/student/drop`, {
     method: "POST",
@@ -372,9 +383,7 @@ async function loadFaculty() {
   const faculty = await res.json();
   const tbody = document.getElementById("facultyList");
 
-  tbody.innerHTML = faculty
-    .map(
-      (f) => `
+  tbody.innerHTML = faculty.map((f) => `
         <tr>
             <td>${f.faculty_id}</td>
             <td>${f.name}</td>
@@ -382,9 +391,7 @@ async function loadFaculty() {
             <td>${f.department}</td>
             <td><button onclick="deleteFaculty(${f.id})" class="action-btn btn-delete"><i class="fas fa-trash"></i></button></td>
         </tr>
-    `
-    )
-    .join("");
+    `).join("");
 }
 
 function openAddFacultyModal() {
@@ -493,18 +500,10 @@ async function postAnnouncement(e) {
 async function loadFinancials() {
   const res = await fetch(`${API_URL}/admin/financials`);
   const data = await res.json();
-  document.getElementById(
-    "financialsList"
-  ).innerHTML = `<table style="width:100%"><thead><tr><th>ID</th><th>Name</th><th>Credits</th><th>Due</th><th>Status</th></tr></thead><tbody>${data
-    .map(
-      (r) =>
-        `<tr><td>${r.student_id}</td><td>${r.name}</td><td>${
-          r.credits
-        }</td><td>$${r.amountDue}</td><td style="color:${
-          r.status === "Pending" ? "orange" : "green"
-        }">${r.status}</td></tr>`
-    )
-    .join("")}</tbody></table>`;
+  document.getElementById("financialsList").innerHTML = `<table style="width:100%"><thead><tr><th>ID</th><th>Name</th><th>Credits</th><th>Due</th><th>Status</th></tr></thead><tbody>${data
+    .map((r) =>
+        `<tr><td>${r.student_id}</td><td>${r.name}</td><td>${r.credits}</td><td>$${r.amountDue}</td><td style="color:${r.status === "Pending" ? "orange" : "green"}">${r.status}</td></tr>`
+    ).join("")}</tbody></table>`;
 }
 
 // --- 8. ADD ADMIN ---

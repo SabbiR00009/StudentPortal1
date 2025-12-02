@@ -3,43 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SAN University - Student Portal</title>
+    <title>SAN University</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
 
-    <!-- LOGIN SCREEN -->
-    <div class="login-wrapper" id="loginPage">
+    <div id="landingPage">
+        <nav class="landing-nav">
+            <div class="logo-container">
+                <img src="/public/logo.png" alt="Logo" class="navbar-logo">
+                <span class="univ-name">SAN UNIVERSITY</span>
+            </div>
+            <div class="nav-links">
+                <a href="#about">About</a>
+                <a href="#academics">Academics</a>
+                <a href="#admissions">Admissions</a>
+                <button class="btn-login-trigger" onclick="showLogin()">Access Portal</button>
+            </div>
+        </nav>
+
+        <header class="hero-section">
+            <div class="hero-overlay"></div>
+            <div class="hero-content">
+                <h1>Scaring the Future,<br>Building Legends.</h1>
+                <p>Join the elite ranks of the world's most prestigious institution. Excellence is not just a goal; it's our tradition.</p>
+                <div class="hero-buttons">
+                    <button class="btn-primary" onclick="showLogin()">Student Login</button>
+                    <button class="btn-outline" onclick="showLogin()">Faculty Access</button>
+                </div>
+            </div>
+        </header>
+
+        <section class="features-section" id="about">
+            <div class="feature-card">
+                <i class="fas fa-graduation-cap"></i>
+                <h3>World Class Academics</h3>
+                <p>Top-tier programs designed to push your boundaries and expand your horizons.</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-flask"></i>
+                <h3>Cutting Edge Research</h3>
+                <p>Leading the way in innovation, discovery, and terrifyingly good science.</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-users"></i>
+                <h3>Vibrant Campus</h3>
+                <p>A community that feels like family. Join clubs, sports, and legacy societies.</p>
+            </div>
+        </section>
+
+        <footer class="landing-footer">
+            <p>&copy; 2025 SAN University. All Rights Reserved. | <a href="#" style="color:#6b7280; text-decoration:none;">Privacy Policy</a></p>
+        </footer>
+    </div>
+
+    <div class="login-wrapper" id="loginPage" style="display:none;">
         <div class="login-container">
             <div class="login-left">
                 <h1>SAN University</h1>
                 <p>Welcome to the Next-Gen Student Portal.</p>
+                <button class="btn-back-home" onclick="showLanding()">
+                    <i class="fas fa-arrow-left"></i> Back to Home
+                </button>
             </div>
             <div class="login-right">
                 <h2>Sign In</h2>
                 <div class="error-message" id="errorMessage"></div>
                 <form id="loginForm">
                     <div class="input-group">
-                        <label>Student ID</label>
+                        <label>Student ID / Email</label>
                         <input type="text" id="studentId" placeholder="e.g., SAN2025001" required>
                     </div>
-                    <div class="input-group">
+                    
+                    <div class="input-group password-group">
                         <label>Password</label>
                         <input type="password" id="password" required>
+                        <i class="fas fa-eye" id="togglePassword" title="Show/Hide Password"></i>
                     </div>
+
                     <button type="submit" class="login-btn">Secure Login</button>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- DASHBOARD -->
-    <div class="dashboard" id="dashboard">
+    <div class="dashboard" id="dashboard" style="display:none;">
         <div class="navbar">
-            <h1>SAN University</h1>
+            <div class="logo-container" id="navLogo">
+                <img src="/public/logo.png" alt="SAN Logo" class="navbar-logo">
+                <h1>SAN University</h1>
+            </div>
             <div class="user-info">
                 <div class="user-avatar" id="userAvatar">S</div>
+                
                 <div style="display:flex; flex-direction:column;">
                     <span id="userName" style="font-weight:600; font-size:0.9em;">Student</span>
                     <span style="font-size:0.75em; color:#666;" id="userIdDisplay">ID: ...</span>
@@ -50,10 +108,8 @@
 
         <div class="dashboard-content">
             
-            <!-- LEFT: MAIN CONTENT -->
             <div class="main-panel">
                 
-                <!-- 1. HOME -->
                 <div id="view-home" class="view-section active">
                     <div class="welcome-section">
                         <h2 id="welcomeMessage">Welcome back!</h2>
@@ -71,7 +127,6 @@
                     </div>
                 </div>
 
-                <!-- 2. SCHEDULE -->
                 <div id="view-schedule" class="view-section">
                     <div class="card">
                         <h3>Class Schedule & History</h3>
@@ -79,7 +134,6 @@
                     </div>
                 </div>
 
-                <!-- 3. GRADE REPORT -->
                 <div id="view-grades" class="view-section">
                     <div class="card">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
@@ -90,10 +144,15 @@
                     </div>
                 </div>
 
-                <!-- 4. ADVISING -->
+                <div id="view-financials" class="view-section">
+                    <div class="card">
+                        <h3>Financial Status</h3>
+                        <div id="financialsContainer">Loading...</div>
+                    </div>
+                </div>
+
                 <div id="view-advising" class="view-section">
                     <div class="advising-layout">
-                        <!-- Left: Course Catalog -->
                         <div class="card">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
                                 <h3 style="margin:0; border:none;">Fall-2025 Catalog</h3>
@@ -102,13 +161,12 @@
                             <div id="advisingCatalog" class="catalog-list">Loading courses...</div>
                         </div>
 
-                        <!-- Right: Advising Slip -->
                         <div class="card slip-card">
                             <div style="background:#f8fafc; padding:15px; border-bottom:1px solid #e2e8f0;">
                                 <h3 style="margin:0; border:none; font-size:1.1em;">Advising Slip</h3>
                             </div>
                             <div id="advisingSlipList" class="slip-list">
-                                <div class="empty-state"><i class="fas fa-basket-shopping"></i><p>Select courses from the catalog to add them here.</p></div>
+                                <div class="empty-state"><i class="fas fa-basket-shopping"></i><p>Select courses from the catalog.</p></div>
                             </div>
                             <div class="slip-footer">
                                 <div class="slip-summary"><span>Total Credits:</span><span id="slipTotalCredits" style="font-weight:bold; color:#4F46E5;">0</span></div>
@@ -118,15 +176,6 @@
                     </div>
                 </div>
 
-                <!-- 5. FINANCIALS -->
-                <div id="view-financials" class="view-section">
-                    <div class="card">
-                        <h3>Financial Status</h3>
-                        <div id="financialsContainer">Loading...</div>
-                    </div>
-                </div>
-
-                <!-- 6. PROFILE (NEW ADDITION) -->
                 <div id="view-profile" class="view-section">
                     <div class="card profile-card">
                         <div class="profile-header-large">
@@ -142,7 +191,6 @@
                         </div>
                         
                         <div class="profile-body">
-                            <!-- Academic Info -->
                             <div class="profile-section">
                                 <h3><i class="fas fa-graduation-cap"></i> Academic Info</h3>
                                 <div class="info-grid">
@@ -153,7 +201,6 @@
                                 </div>
                             </div>
 
-                            <!-- Personal Info -->
                             <div class="profile-section">
                                 <h3><i class="fas fa-user"></i> Personal Info</h3>
                                 <div class="info-grid">
@@ -164,7 +211,6 @@
                                 </div>
                             </div>
 
-                            <!-- Contact Info -->
                             <div class="profile-section" style="grid-column: span 2;">
                                 <h3><i class="fas fa-address-card"></i> Contact Information</h3>
                                 <div class="info-grid">
@@ -175,7 +221,6 @@
                                 </div>
                             </div>
 
-                            <!-- Advisor Info -->
                             <div class="profile-section" style="grid-column: span 2;">
                                 <h3><i class="fas fa-chalkboard-teacher"></i> Academic Advisor</h3>
                                 <div class="advisor-box">
@@ -190,16 +235,14 @@
                         </div>
                     </div>
                 </div>
+
             </div>
 
-            <!-- RIGHT: MENU -->
             <div class="side-panel">
                 <div class="card">
-                    <h3 style="font-size:0.9em; color:#9ca3af; margin-bottom:15px; letter-spacing:1px; text-transform:uppercase;">Menu</h3>
+                    <h3 class="menu-title">Menu</h3>
                     <div class="nav-menu">
                         <button class="nav-btn active" data-view="home"><i class="fas fa-home"></i> Home</button>
-                        <!-- Added Profile Button Here -->
-                        <button class="nav-btn" data-view="profile"><i class="fas fa-user-circle"></i> My Profile</button>
                         <button class="nav-btn" data-view="schedule"><i class="fas fa-calendar-alt"></i> Class Schedule</button>
                         <button class="nav-btn" data-view="grades"><i class="fas fa-graduation-cap"></i> Grade Report</button>
                         <button class="nav-btn" data-view="advising"><i class="fas fa-edit"></i> Advising Portal</button>
@@ -207,7 +250,6 @@
                         <button class="nav-btn danger" id="dropSemesterBtn"><i class="fas fa-trash-alt"></i> Drop Semester</button>
                     </div>
                 </div>
-
                 <div class="card">
                     <h3>Announcements</h3>
                     <div id="announcementsList">Loading...</div>
@@ -216,7 +258,6 @@
         </div>
     </div>
 
-    <!-- Scripts -->
     <script src="script.js"></script>
 </body>
 </html>

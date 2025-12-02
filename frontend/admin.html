@@ -11,11 +11,15 @@
 <body class="admin-theme">
 
     <div class="dashboard" id="dashboard" style="display:block;">
-        <!-- ADMIN NAVBAR -->
         <div class="navbar">
-            <h1><i class="fas fa-user-shield"></i> SAN Admin</h1>
+            <div class="logo-container" id="adminNavLogo">
+                <img src="/public/logo.png" alt="SAN Logo" class="navbar-logo">
+                <h1><i class="fas fa-user-shield"></i> SAN Admin</h1>
+            </div>
+
             <div class="user-info">
                 <div class="user-avatar">A</div>
+                
                 <div style="display:flex; flex-direction:column; text-align:right;">
                     <span id="adminName">Administrator</span>
                     <span style="font-size:0.75em; color:#cbd5e1;">System Control</span>
@@ -26,10 +30,8 @@
 
         <div class="dashboard-content">
             
-            <!-- LEFT: CONTENT -->
             <div class="main-panel">
                 
-                <!-- 1. OVERVIEW -->
                 <div id="view-overview" class="view-section active">
                     <div class="welcome-section">
                         <h2>Admin Control Center</h2>
@@ -49,7 +51,25 @@
                     </div>
                 </div>
 
-                <!-- 2. MANAGE FACULTY -->
+                <div id="view-profile" class="view-section">
+                    <div class="card">
+                        <h3><i class="fas fa-id-card"></i> Administrator Profile</h3>
+                        <div style="display: flex; gap: 30px; align-items: flex-start;">
+                            <div style="width: 120px; height: 120px; border-radius: 50%; overflow: hidden; border: 4px solid #fee2e2;">
+                                <img id="adminProfileImg" src="" alt="Admin" style="width:100%; height:100%; object-fit:cover;">
+                            </div>
+                            <div>
+                                <h2 id="adminProfileName" style="margin: 0; font-size: 2em; color: #1f2937;">Loading...</h2>
+                                <p id="adminProfileRole" style="color: #dc2626; font-weight: bold; margin-top: 5px;">System Administrator</p>
+                                <div style="margin-top: 20px; display: grid; gap: 10px;">
+                                    <div><strong>Email:</strong> <span id="adminProfileEmail">...</span></div>
+                                    <div><strong>Access Level:</strong> Full Control</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div id="view-faculty" class="view-section">
                     <div class="card">
                         <div class="card-header">
@@ -65,7 +85,6 @@
                     </div>
                 </div>
 
-                <!-- 3. MANAGE STUDENTS -->
                 <div id="view-students" class="view-section">
                     <div class="card">
                         <div class="card-header">
@@ -85,7 +104,6 @@
                     </div>
                 </div>
 
-                <!-- 4. MANAGE COURSES -->
                 <div id="view-courses" class="view-section">
                     <div class="card">
                         <h3><i class="fas fa-book-open"></i> Add New Course</h3>
@@ -103,7 +121,6 @@
                     </div>
                 </div>
 
-                <!-- 5. UPLOAD GRADES -->
                 <div id="view-grades" class="view-section">
                     <div class="card">
                         <h3><i class="fas fa-file-signature"></i> Upload Student Grade</h3>
@@ -135,7 +152,6 @@
                     </div>
                 </div>
 
-                <!-- 6. FINANCIALS -->
                 <div id="view-financials" class="view-section">
                     <div class="card">
                         <h3><i class="fas fa-file-invoice-dollar"></i> Global Financial Status</h3>
@@ -143,7 +159,6 @@
                     </div>
                 </div>
 
-                <!-- 7. SEMESTERS -->
                 <div id="view-semesters" class="view-section">
                     <div class="card">
                         <h3><i class="fas fa-calendar-plus"></i> Open New Semester</h3>
@@ -158,7 +173,6 @@
                     </div>
                 </div>
                 
-                <!-- 8. MANAGE ADMINS -->
                 <div id="view-admins" class="view-section">
                     <div class="card">
                         <h3><i class="fas fa-user-shield"></i> Add New Administrator</h3>
@@ -171,7 +185,6 @@
                     </div>
                 </div>
 
-                <!-- 9. ANNOUNCEMENTS -->
                 <div id="view-announcements" class="view-section">
                     <div class="card">
                         <h3><i class="fas fa-bullhorn"></i> Post Announcement</h3>
@@ -186,7 +199,6 @@
 
             </div>
 
-            <!-- RIGHT: MENU -->
             <div class="side-panel">
                 <div class="card">
                     <h3 class="menu-title">ADMIN TOOLS</h3>
@@ -206,7 +218,6 @@
         </div>
     </div>
 
-    <!-- REGISTER STUDENT MODAL -->
     <div id="studentModal" class="modal-overlay">
         <div class="modal-card">
             <div class="modal-header">
@@ -234,7 +245,6 @@
         </div>
     </div>
     
-    <!-- EDIT STUDENT MODAL (MODERNIZED) -->
     <div id="editStudentModal" class="modal-overlay">
         <div class="modal-card wide-modal">
             <div class="modal-header">
@@ -244,7 +254,6 @@
             <form id="editStudentForm" class="modal-body-scroll">
                 <input type="hidden" id="editStudentDbId">
                 
-                <!-- PROFILE HEADER -->
                 <div class="edit-profile-header">
                     <div class="profile-icon-placeholder"><i class="fas fa-user"></i></div>
                     <div class="profile-main-inputs">
@@ -260,7 +269,6 @@
                 </div>
 
                 <div class="edit-grid-layout">
-                    <!-- LEFT COL: ACADEMIC -->
                     <div class="edit-column">
                         <div class="form-section-title"><i class="fas fa-graduation-cap"></i> Academic Info</div>
                         <div class="input-group"><label>Department</label><input id="editDept" required></div>
@@ -275,7 +283,6 @@
                         <div class="input-group"><label>Email</label><input id="editAdvisorEmail"></div>
                     </div>
 
-                    <!-- RIGHT COL: PERSONAL -->
                     <div class="edit-column">
                         <div class="form-section-title"><i class="fas fa-address-card"></i> Personal & Contact</div>
                         <div class="input-group"><label>Email</label><input id="editEmail" required></div>
@@ -288,7 +295,6 @@
                     </div>
                 </div>
 
-                <!-- COURSE MANAGEMENT (NEW STYLE) -->
                 <div class="course-management-section">
                     <div class="form-section-title" style="color:var(--primary); border-color:var(--primary-light);">
                         <i class="fas fa-book"></i> Course Enrollment
