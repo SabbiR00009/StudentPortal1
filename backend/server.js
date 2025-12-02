@@ -9,35 +9,40 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// ============= AUTHENTICATION =============
+// ============= AUTHENTICATION (STRICT MODE) =============
 
 app.post("/api/login", (req, res) => {
   try {
-    const { studentId, password } = req.body;
-    if (!studentId || !password)
-      return res.status(400).json({ error: "Required" });
+    const { id, password, role } = req.body;
+    
+    if (!id || !password) return res.status(400).json({ error: "Required fields missing" });
 
-    // 1. Check Admin (Email)
-    const admin = db
-      .prepare("SELECT * FROM admins WHERE email = ? AND password = ?")
-      .get(studentId, password);
-
-    if (admin) {
-      const { password, ...d } = admin;
-      return res.json({ success: true, user: d, userType: "admin" });
+    // CASE 1: ADMIN LOGIN
+    if (role === 'admin') {
+        const admin = db.prepare("SELECT * FROM admins WHERE email = ? AND password = ?").get(id, password);
+        
+        if (admin) {
+            const { password, ...d } = admin;
+            return res.json({ success: true, user: d, userType: "admin" });
+        } else {
+            return res.status(401).json({ error: "Invalid Admin credentials" });
+        }
     }
 
-    // 2. Check Student (ID)
-    const student = db
-      .prepare("SELECT * FROM students WHERE student_id = ? AND password = ?")
-      .get(studentId, password);
+    // CASE 2: STUDENT LOGIN
+    if (role === 'student') {
+        const student = db.prepare("SELECT * FROM students WHERE student_id = ? AND password = ?").get(id, password);
 
-    if (student) {
-      const { password, ...d } = student;
-      return res.json({ success: true, student: d, userType: "student" });
+        if (student) {
+            const { password, ...d } = student;
+            return res.json({ success: true, student: d, userType: "student" });
+        } else {
+            return res.status(401).json({ error: "Invalid Student credentials" });
+        }
     }
 
-    res.status(401).json({ error: "Invalid credentials" });
+    return res.status(400).json({ error: "Invalid Login Type" });
+
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -76,7 +81,7 @@ app.delete("/api/admin/faculty/:id", (req, res) => {
   }
 });
 
-// --- 2. STUDENT MANAGEMENT (With Advanced ID Generation) ---
+// --- 2. STUDENT MANAGEMENT (Smart ID Generation) ---
 app.get("/api/admin/students", (req, res) => {
   try {
     const { search } = req.query;
@@ -100,7 +105,7 @@ app.post("/api/admin/students", (req, res) => {
     const admittedSem = s.admitted_semester || "Fall";
     const dept = s.department || "General";
 
-    // Map Semester to Code (Spring=1, Summer=2, Fall=3)
+    // Map Semester to Code
     const semMap = { "Spring": 1, "Summer": 2, "Fall": 3 };
     const sCode = semMap[admittedSem] || 3; 
 
@@ -109,7 +114,6 @@ app.post("/api/admin/students", (req, res) => {
     const dCode = deptMap[dept] || 99;
 
     // Generate Serial (Count existing students in this specific batch)
-    // We filter by year, admitted_semester, and department to find the next serial
     const countQuery = db.prepare("SELECT count(*) as c FROM students WHERE year = ? AND admitted_semester = ? AND department = ?");
     const count = countQuery.get(admittedYear, admittedSem, dept).c;
     const serial = String(count + 1).padStart(3, "0");
@@ -190,7 +194,7 @@ app.delete("/api/admin/students/:id", (req, res) => {
   }
 });
 
-// --- 3. ADMIN STUDENT ACTIONS (Enroll/Drop Override) ---
+// --- 3. ADMIN STUDENT ACTIONS ---
 app.post("/api/admin/student/enroll", (req, res) => {
   try {
     const { studentDbId, courseCode } = req.body;
@@ -257,7 +261,7 @@ app.post("/api/admin/courses", (req, res) => {
   }
 });
 
-// Update Capacity
+// Update Seat Capacity
 app.put("/api/admin/courses/:id/capacity", (req, res) => {
     try {
         const { max_students } = req.body;
@@ -352,7 +356,7 @@ app.post("/api/admin/announcements", (req, res) => {
   }
 });
 
-// --- ADMIN: ADVISING SLOTS ---
+// --- 6. ADMIN: ADVISING SLOTS ---
 app.get("/api/admin/slots", (req, res) => {
   try {
     const slots = db.prepare("SELECT * FROM advising_slots ORDER BY start_time").all();

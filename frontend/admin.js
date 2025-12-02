@@ -15,6 +15,10 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("addAdminForm").addEventListener("submit", addAdmin);
   document.getElementById("editStudentForm").addEventListener("submit", updateStudentProfile);
   
+  // [NEW] Faculty Form Listener
+  const facultyForm = document.getElementById("newFacultyForm");
+  if (facultyForm) facultyForm.addEventListener("submit", registerFaculty);
+
   // Advising Slots Form
   const slotForm = document.getElementById("addSlotForm");
   if (slotForm) slotForm.addEventListener("submit", addSlot);
@@ -34,22 +38,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // --- ADMIN AVATAR & PROFILE LOGIC ---
 function setupAdminAvatar() {
-    // Get Admin data from Session Storage
     const adminData = JSON.parse(sessionStorage.getItem('adminUser'));
     const avatarEl = document.querySelector('.navbar .user-avatar');
     
     if (adminData && avatarEl) {
-        // Update Name in Navbar
         const nameEl = document.getElementById("adminName");
         if(nameEl) nameEl.innerText = adminData.name;
 
-        // Generate Image URL based on name
         const imgUrl = `https://ui-avatars.com/api/?name=${adminData.name}&background=dc2626&color=fff`;
-        
-        // Render Image in Navbar
         avatarEl.innerHTML = `<img src="${imgUrl}" alt="Admin">`;
         
-        // Add Click Listener
         avatarEl.addEventListener('click', () => {
             loadAdminProfile(adminData);
             switchAdminView('profile', null);
@@ -65,19 +63,14 @@ function loadAdminProfile(admin) {
 
 // --- NAVIGATION ---
 function switchAdminView(viewName, btn) {
-  // Hide all views
   document.querySelectorAll(".view-section").forEach((el) => el.classList.remove("active"));
-  // Deactivate all sidebar buttons
   document.querySelectorAll(".nav-btn").forEach((el) => el.classList.remove("active"));
 
-  // Show target view
   const target = document.getElementById(`view-${viewName}`);
   if (target) target.classList.add("active");
   
-  // Highlight sidebar button if it exists
   if (btn) btn.classList.add("active");
 
-  // Load specific data
   if (viewName === "students") loadStudents();
   if (viewName === "financials") loadFinancials();
   if (viewName === "faculty") loadFaculty();
@@ -140,7 +133,7 @@ async function registerStudent(e) {
     email: document.getElementById("nsEmail").value,
     phone: document.getElementById("nsPhone").value,
     
-    // [UPDATED] Send ID Generation Data
+    // Send ID Generation Data
     department: document.getElementById("nsDept").value,
     admitted_year: document.getElementById("nsYear").value,
     admitted_semester: document.getElementById("nsSem").value,
@@ -158,7 +151,7 @@ async function registerStudent(e) {
     });
     const data = await res.json();
     if (data.success) {
-      alert(data.message); // e.g. "Student Created! ID: 2025-3-60-001"
+      alert(data.message); 
       document.getElementById("studentModal").style.display = "none";
       e.target.reset();
       loadStudents();
@@ -181,13 +174,11 @@ async function deleteStudent(studentId) {
 // --- EDIT STUDENT & COURSE MANAGEMENT LOGIC ---
 
 async function openEditStudentModal(studentId, dbId) {
-  currentEditingStudentId = dbId; // Store DB ID globally for course ops
+  currentEditingStudentId = dbId; 
 
-  // 1. Fetch Student Details
   const res = await fetch(`${API_URL}/students/${dbId}`);
   const s = await res.json();
 
-  // 2. Populate Form
   document.getElementById("editStudentDbId").value = dbId;
   document.getElementById("editStudentId").value = s.student_id;
   document.getElementById("editName").value = s.name;
@@ -205,7 +196,6 @@ async function openEditStudentModal(studentId, dbId) {
   document.getElementById("editAdvisorName").value = s.advisor_name || "";
   document.getElementById("editAdvisorEmail").value = s.advisor_email || "";
 
-  // 3. Load Enrolled Courses for this Student
   loadAdminStudentCourses(dbId);
 
   document.getElementById("editStudentModal").style.display = "flex";
@@ -248,7 +238,7 @@ async function updateStudentProfile(e) {
   }
 }
 
-// --- ADMIN COURSE ACTIONS FOR STUDENT (Enroll/Drop Override) ---
+// --- ADMIN COURSE ACTIONS FOR STUDENT ---
 
 async function loadAdminStudentCourses(dbId) {
   const res = await fetch(`${API_URL}/students/${dbId}/courses`);
@@ -275,14 +265,13 @@ async function loadAdminStudentCourses(dbId) {
         </table>`;
   }
 
-  // Refresh the dropdown to exclude these enrolled courses
   loadAdminAvailableCourses(dbId);
 }
 
 async function loadAdminAvailableCourses(dbId) {
   try {
     const [catRes, stuRes] = await Promise.all([
-      fetch(`${API_URL}/advising/courses`), // Gets all courses
+      fetch(`${API_URL}/advising/courses`),
       fetch(`${API_URL}/students/${dbId}/courses`),
     ]);
     const allCatalog = await catRes.json();
@@ -292,7 +281,6 @@ async function loadAdminAvailableCourses(dbId) {
       .filter((c) => c.status === "enrolled")
       .map((c) => c.code);
 
-    // Filter out enrolled courses
     const availableCourses = allCatalog.filter(
       (c) => !enrolledCodes.includes(c.code)
     );
@@ -399,31 +387,45 @@ async function loadFaculty() {
             <td>${f.name}</td>
             <td>${f.email}</td>
             <td>${f.department}</td>
+            <td>${f.designation || 'Lecturer'}</td>
             <td><button onclick="deleteFaculty(${f.id})" class="action-btn btn-delete"><i class="fas fa-trash"></i></button></td>
         </tr>
     `).join("");
 }
 
 function openAddFacultyModal() {
-  const name = prompt("Faculty Name:");
-  const email = prompt("Faculty Email:");
-  if (name && email) {
-    const id = "F" + Math.floor(Math.random() * 1000);
-    fetch(`${API_URL}/admin/faculty`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        faculty_id: id,
-        name,
-        email,
-        department: "General",
-        designation: "Lecturer",
-      }),
-    }).then(() => {
-      alert("Added!");
-      loadFaculty();
-    });
-  }
+  document.getElementById("facultyModal").style.display = "flex";
+}
+
+// [NEW] Register Faculty Function
+async function registerFaculty(e) {
+    e.preventDefault();
+    const body = {
+        faculty_id: document.getElementById("nfId").value,
+        name: document.getElementById("nfName").value,
+        email: document.getElementById("nfEmail").value,
+        department: document.getElementById("nfDept").value,
+        designation: document.getElementById("nfDesignation").value
+    };
+
+    try {
+        const res = await fetch(`${API_URL}/admin/faculty`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if(data.success) {
+            alert("Faculty Member Added!");
+            document.getElementById("facultyModal").style.display = 'none';
+            e.target.reset();
+            loadFaculty();
+        } else {
+            alert("Error: " + (data.error || "Unknown Error"));
+        }
+    } catch(err) {
+        alert("Connection Error");
+    }
 }
 
 async function deleteFaculty(id) {
@@ -446,7 +448,6 @@ async function loadAdminCourses() {
         }
 
         tbody.innerHTML = courses.map(c => {
-            // Safe div handling if max_students is 0
             const percentage = c.max_students > 0 ? Math.round((c.enrolled_count / c.max_students) * 100) : 100;
             const statusColor = percentage >= 100 ? 'red' : (percentage >= 80 ? 'orange' : 'green');
             
@@ -507,10 +508,7 @@ async function addCourse(e) {
   const body = {
     code: document.getElementById("cCode").value,
     name: document.getElementById("cName").value,
-    
-    // [UPDATED] Catch Department from Dropdown
     department: document.getElementById("cDept").value,
-    
     credits: document.getElementById("cCredits").value,
     instructor: document.getElementById("cInstructor").value,
     schedule: document.getElementById("cTime").value,
@@ -526,7 +524,7 @@ async function addCourse(e) {
   });
   alert("Course Added!");
   e.target.reset();
-  loadAdminCourses(); // Refresh table
+  loadAdminCourses(); 
 }
 
 async function deleteCourse(id) {

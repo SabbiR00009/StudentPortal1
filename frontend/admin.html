@@ -77,7 +77,7 @@
                         </div>
                         <div class="table-responsive">
                             <table id="facultyTable">
-                                <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Dept</th><th>Action</th></tr></thead>
+                                <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Dept</th><th>Designation</th><th>Action</th></tr></thead>
                                 <tbody id="facultyList"></tbody>
                             </table>
                         </div>
@@ -321,6 +321,37 @@
                 <div class="modal-footer">
                     <button type="button" class="admin-btn secondary" onclick="document.getElementById('studentModal').style.display='none'">Cancel</button>
                     <button type="submit" class="admin-btn primary">Register Student</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="facultyModal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Add New Faculty</h3>
+                <button class="close-modal" onclick="document.getElementById('facultyModal').style.display='none'">&times;</button>
+            </div>
+            <form id="newFacultyForm" class="modal-body">
+                <div class="form-grid">
+                    <div class="input-group"><label>Faculty ID</label><input id="nfId" placeholder="e.g. F-2025-001" required></div>
+                    <div class="input-group"><label>Full Name</label><input id="nfName" required></div>
+                    <div class="input-group"><label>Email</label><input type="email" id="nfEmail" required></div>
+                    <div class="input-group"><label>Designation</label><input id="nfDesignation" placeholder="e.g. Senior Lecturer" required></div>
+                    <div class="input-group">
+                        <label>Department</label>
+                        <select id="nfDept" required>
+                            <option value="CSE">CSE</option>
+                            <option value="EEE">EEE</option>
+                            <option value="BBA">BBA</option>
+                            <option value="ACT">ACT</option>
+                            <option value="ENG">ENG</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="admin-btn secondary" onclick="document.getElementById('facultyModal').style.display='none'">Cancel</button>
+                    <button type="submit" class="admin-btn primary">Add Faculty</button>
                 </div>
             </form>
         </div>

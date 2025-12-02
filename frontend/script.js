@@ -3,6 +3,7 @@ let currentStudent = null;
 let advisingSlip = []; // Local cart for courses
 let pollingInterval = null; // Timer for seat updates
 let currentEnrolledCredits = 0; // Track credits for validation
+let loginRole = 'student'; // Tracks if user clicked "Student" or "Faculty"
 
 // --- 0. AUTO-FIX CSS (Self-Healing) ---
 (function fixStyles() {
@@ -124,10 +125,35 @@ window.showLanding = function() {
     window.scrollTo(0,0);
 }
 
-window.showLogin = function() {
+// [UPDATED] Show Login with strict Role context AND Correct Placeholder
+window.showLogin = function(type) {
+    loginRole = type || 'student'; // Set global state
+    
     document.getElementById("landingPage").style.display = "none";
     document.getElementById("loginPage").style.display = "flex";
     document.getElementById("dashboard").style.display = "none";
+    
+    // UI Elements
+    const titleEl = document.getElementById("loginTitle");
+    const labelEl = document.querySelector("#loginForm label"); 
+    const inputEl = document.getElementById("studentId"); // Select the input field
+
+    if (loginRole === 'admin') {
+        titleEl.innerText = "Faculty & Admin Sign In";
+        titleEl.style.color = "#dc2626"; // Red for Admin
+        labelEl.innerText = "Admin Email";
+        inputEl.placeholder = "e.g., admin@san.edu"; // <--- FIXED PLACEHOLDER
+    } else {
+        titleEl.innerText = "Student Sign In";
+        titleEl.style.color = "#1e3a8a"; // Blue for Student
+        labelEl.innerText = "Student ID";
+        inputEl.placeholder = "e.g., 2025-3-60-001"; // <--- FIXED PLACEHOLDER
+    }
+    
+    // Clear previous errors/inputs
+    inputEl.value = "";
+    document.getElementById("password").value = "";
+    document.getElementById("errorMessage").style.display = "none";
 }
 
 function showDashboard() {
@@ -163,7 +189,11 @@ async function handleLogin(e) {
     const res = await fetch(`${API_URL}/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ studentId: inputVal, password }),
+      body: JSON.stringify({ 
+          id: inputVal, 
+          password: password,
+          role: loginRole 
+      }),
     });
 
     const data = await res.json();
@@ -341,7 +371,6 @@ async function loadHomeData() {
 }
 
 // --- ADVISING (GATEKEEPER + FILTERS) ---
-// Exposed global function for HTML onchange events
 window.loadAdvisingCatalog = async function() {
   try {
     // 1. GATEKEEPER CHECK: Check Time Slot Access
@@ -445,7 +474,6 @@ window.loadAdvisingCatalog = async function() {
 
     html += renderList(undoneCourses, "Regular Courses", "#4F46E5");
     
-    // Only show retake section if we are NOT filtering specific dept (to avoid clutter), OR if there are actually retakes in that dept
     if(retakeCourses.length > 0) {
         html += renderList(retakeCourses, "Retake Courses (Completed)", "#F59E0B");
     }
@@ -456,7 +484,6 @@ window.loadAdvisingCatalog = async function() {
   }
 }
 
-// Exposed to global scope for HTML onclick
 window.addToSlip = function(id, code, name, credits) {
   if (advisingSlip.find((c) => c.id === id)) return;
   const slipCredits = advisingSlip.reduce((sum, c) => sum + c.credits, 0);
