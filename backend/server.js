@@ -25,6 +25,7 @@ app.post("/api/login", (req, res) => {
             const { password, ...d } = admin;
             return res.json({ success: true, user: d, userType: "admin" });
         } else {
+            // Security: If they try to login as admin but are not in admin table, fail.
             return res.status(401).json({ error: "Invalid Admin credentials" });
         }
     }
@@ -98,27 +99,30 @@ app.get("/api/admin/students", (req, res) => {
 app.post("/api/admin/students", (req, res) => {
   try {
     const s = req.body;
-    
-    // --- ID GENERATION LOGIC ---
-    // Format: Year-SemCode-DeptCode-Serial
-    const admittedYear = s.admitted_year || new Date().getFullYear();
-    const admittedSem = s.admitted_semester || "Fall";
-    const dept = s.department || "General";
+    let finalId = s.student_id; // Check if manual ID provided
 
-    // Map Semester to Code
-    const semMap = { "Spring": 1, "Summer": 2, "Fall": 3 };
-    const sCode = semMap[admittedSem] || 3; 
+    // If NO manual ID, generate one: Year-SemCode-DeptCode-Serial
+    if (!finalId || finalId.trim() === "") {
+        const admittedYear = s.admitted_year || new Date().getFullYear();
+        const admittedSem = s.admitted_semester || "Fall";
+        const dept = s.department || "General";
 
-    // Map Department to Code
-    const deptMap = { "CSE": 60, "EEE": 50, "BBA": 40, "ACT": 30, "ENG": 20 };
-    const dCode = deptMap[dept] || 99;
+        // Map Semester to Code
+        const semMap = { "Spring": 1, "Summer": 2, "Fall": 3 };
+        const sCode = semMap[admittedSem] || 3; 
 
-    // Generate Serial (Count existing students in this specific batch)
-    const countQuery = db.prepare("SELECT count(*) as c FROM students WHERE year = ? AND admitted_semester = ? AND department = ?");
-    const count = countQuery.get(admittedYear, admittedSem, dept).c;
-    const serial = String(count + 1).padStart(3, "0");
+        // Map Department to Code
+        const deptMap = { "CSE": 60, "EEE": 50, "BBA": 40, "ACT": 30, "ENG": 20 };
+        const dCode = deptMap[dept] || 99;
 
-    const generatedId = `${admittedYear}-${sCode}-${dCode}-${serial}`;
+        // Generate Serial (Count existing students in this specific batch)
+        const countQuery = db.prepare("SELECT count(*) as c FROM students WHERE year = ? AND admitted_semester = ? AND department = ?");
+        const count = countQuery.get(admittedYear, admittedSem, dept).c;
+        const serial = String(count + 1).padStart(3, "0");
+
+        finalId = `${admittedYear}-${sCode}-${dCode}-${serial}`;
+    }
+
     const uniqueId = s.unique_id || `U-${Math.floor(Math.random() * 1000000)}`;
 
     const stmt = db.prepare(`
@@ -130,16 +134,16 @@ app.post("/api/admin/students", (req, res) => {
         `);
 
     stmt.run(
-      generatedId,
+      finalId,
       uniqueId,
       "123456", // Default password
       s.name,
       s.email,
       s.phone,
-      s.program || `B.Sc in ${dept}`,
-      dept,
-      admittedSem,
-      admittedYear,
+      s.program || `B.Sc in ${s.department}`,
+      s.department,
+      s.admitted_semester,
+      s.admitted_year,
       "Fall-2025", // Current Enrolled Semester
       s.dob,
       s.blood_group,
@@ -150,7 +154,7 @@ app.post("/api/admin/students", (req, res) => {
       s.advisor_name,
       s.advisor_email
     );
-    res.json({ success: true, message: `Student Created! ID: ${generatedId}` });
+    res.json({ success: true, message: `Student Created! ID: ${finalId}` });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -194,7 +198,7 @@ app.delete("/api/admin/students/:id", (req, res) => {
   }
 });
 
-// --- 3. ADMIN STUDENT ACTIONS ---
+// --- 3. ADMIN STUDENT ACTIONS (Enroll/Drop Override) ---
 app.post("/api/admin/student/enroll", (req, res) => {
   try {
     const { studentDbId, courseCode } = req.body;
@@ -235,7 +239,7 @@ app.post("/api/admin/student/drop", (req, res) => {
   }
 });
 
-// --- 4. COURSE & GRADE MANAGEMENT ---
+// --- 4. COURSE & GRADE MANAGEMENT (With Dept & Seat Control) ---
 
 // Get All Courses (Admin List)
 app.get("/api/admin/courses", (req, res) => {
@@ -247,7 +251,7 @@ app.get("/api/admin/courses", (req, res) => {
   }
 });
 
-// Create Course (Department Wise)
+// Create Course
 app.post("/api/admin/courses", (req, res) => {
   try {
     const { code, name, department, credits, instructor, instructor_email, schedule, room_number, section, semester } = req.body;
@@ -266,15 +270,19 @@ app.put("/api/admin/courses/:id/capacity", (req, res) => {
     try {
         const { max_students } = req.body;
         const courseId = req.params.id;
+
         const course = db.prepare("SELECT enrolled_count, code FROM courses WHERE id = ?").get(courseId);
         
         if (!course) return res.status(404).json({ error: "Course not found" });
+
         if (max_students < course.enrolled_count) {
-            return res.status(400).json({ error: `Cannot reduce capacity below enrolled count (${course.enrolled_count}).` });
+            return res.status(400).json({ 
+                error: `Cannot reduce capacity to ${max_students}. ${course.enrolled_count} students are already enrolled.` 
+            });
         }
 
         db.prepare("UPDATE courses SET max_students = ? WHERE id = ?").run(max_students, courseId);
-        res.json({ success: true, message: `Updated ${course.code} capacity.` });
+        res.json({ success: true, message: `Updated ${course.code} capacity to ${max_students}` });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -537,13 +545,11 @@ app.get("/api/advising/courses", (req, res) => {
     const params = [];
     const conditions = [];
 
-    // Filter by Dept
     if (dept && dept !== 'All') {
         conditions.push("department = ?");
         params.push(dept);
     }
 
-    // Filter by Semester
     if (semester) {
         conditions.push("semester = ?");
         params.push(semester);
