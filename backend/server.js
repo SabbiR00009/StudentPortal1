@@ -661,18 +661,25 @@ function checkTimeConflict(newCourse, existingCourses) {
   console.log(`\n--- START CONFLICT CHECK FOR ${newCourse.code} ---`);
 
   // 1. Time Parser
+  // REPLACE your current parseTime with this one to fix the "AM vs PM" math
   const parseTime = (str) => {
     if (!str) return null;
-    // Clean "Slot X:" and trim spaces
     const clean = str.replace(/Slot \d+:/i, "").trim();
     const parts = clean.split("-");
     if (parts.length !== 2) return null;
 
     const [s, e] = parts.map(t => t.trim());
+
     const toMin = (t) => {
-      const [h, m] = t.split(":").map(Number);
+      let [h, m] = t.split(":").map(Number);
+
+      // 12-HOUR FIX: If hour is 01-07, assume it's PM (Afternoon)
+      if (h < 8) h += 12;
+      if (h === 12 && t.toLowerCase().includes("am")) h = 0;
+
       return (h * 60) + (m || 0);
     };
+
     return { start: toMin(s), end: toMin(e) };
   };
 
@@ -735,7 +742,9 @@ function checkTimeConflict(newCourse, existingCourses) {
         // Check Day
         if (newSeg.day === oldSeg.day) {
           // Check Time
-          if (newSeg.start === oldSeg.start && newSeg.end === oldSeg.end) {
+          if ((newSeg.start === oldSeg.start && newSeg.end === oldSeg.end) ||
+            (newSeg.start < oldSeg.end && newSeg.end > oldSeg.start)
+          ) {
             const msg = `CONFLICT: ${newCourse.code} (${newSeg.type} ${newSeg.start}-${newSeg.end}) hits ${oldCourse.code} (${oldSeg.type} ${oldSeg.start}-${oldSeg.end}) on ${newSeg.day}`;
             console.log("!!! " + msg);
             return { conflict: true, message: msg };
