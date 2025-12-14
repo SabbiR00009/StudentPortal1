@@ -62,18 +62,33 @@ app.get("/api/admin/faculty", (req, res) => {
   }
 });
 
+// CREATE FACULTY (Collision-Proof Random ID)
 app.post("/api/admin/faculty", (req, res) => {
   try {
     const { name, department, designation } = req.body;
-    const randomNum = Math.floor(100 + Math.random() * 900);
-    const faculty_id = `F-${department}-${randomNum}`; // Fixed ID format
-    const email = `${faculty_id}@san.edu`; // Fixed email domain
+
+    let faculty_id;
+    let isUnique = false;
+
+    // Loop until we find an ID that doesn't exist
+    while (!isUnique) {
+      const randomNum = Math.floor(100 + Math.random() * 900); // 100 to 999
+      faculty_id = `F-${department}-${randomNum}`;
+
+      // Check DB
+      const exists = db.prepare("SELECT id FROM faculty WHERE faculty_id = ?").get(faculty_id);
+      if (!exists) isUnique = true;
+    }
+
+    // Auto-Generate Email
+    const email = `${faculty_id}@san.edu`;
 
     db.prepare(
       "INSERT INTO faculty (faculty_id, name, email, department, designation, password) VALUES (?, ?, ?, ?, ?, '123456')"
     ).run(faculty_id, name, email, department, designation);
 
     res.json({ success: true, message: `Faculty Added! ID: ${faculty_id}` });
+
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -104,9 +119,12 @@ app.get("/api/admin/students", (req, res) => {
   }
 });
 
+// CREATE STUDENT (Collision-Proof & Safe Sequential)
 app.post("/api/admin/students", (req, res) => {
   try {
     const s = req.body;
+
+    // 1. Generate Sequential Student ID
     const admittedYear = s.admitted_year || new Date().getFullYear();
     const admittedSem = s.admitted_semester || "Fall";
     const dept = s.department || "General";
@@ -116,14 +134,40 @@ app.post("/api/admin/students", (req, res) => {
     const deptMap = { "CSE": 60, "EEE": 50, "BBA": 40, "ACT": 30, "ENG": 20 };
     const dCode = deptMap[dept] || 99;
 
-    const countQuery = db.prepare("SELECT count(*) as c FROM students WHERE year = ? AND admitted_semester = ? AND department = ?");
-    const count = countQuery.get(admittedYear, admittedSem, dept).c;
-    const serial = String(count + 1).padStart(3, "0");
+    // Pattern prefix for this batch: "2025-3-60-"
+    const prefix = `${admittedYear}-${sCode}-${dCode}-`;
 
-    const finalId = `${admittedYear}-${sCode}-${dCode}-${serial}`;
+    // FIND HIGHEST EXISTING SERIAL
+    // We look for the last student ID that starts with this prefix
+    const lastStudent = db.prepare(`
+            SELECT student_id FROM students 
+            WHERE student_id LIKE ? 
+            ORDER BY student_id DESC LIMIT 1
+        `).get(`${prefix}%`);
+
+    let serial = 1;
+    if (lastStudent) {
+      // Extract the last 3 digits: "2025-3-60-005" -> "005" -> 5
+      const parts = lastStudent.student_id.split("-");
+      const lastSerial = parseInt(parts[parts.length - 1]);
+      if (!isNaN(lastSerial)) serial = lastSerial + 1;
+    }
+
+    const finalId = `${prefix}${String(serial).padStart(3, "0")}`;
     const finalEmail = `${finalId}@san.edu`;
-    const uniqueId = `U-${Math.floor(Math.random() * 1000000)}`;
 
+    // 2. Generate Collision-Proof Unique ID (U-XXXXXX)
+    let uniqueId;
+    let isUnique = false;
+
+    // Keep trying until we find a free ID
+    while (!isUnique) {
+      uniqueId = `U-${Math.floor(100000 + Math.random() * 900000)}`; // 6 Digits
+      const exists = db.prepare("SELECT id FROM students WHERE unique_id = ?").get(uniqueId);
+      if (!exists) isUnique = true;
+    }
+
+    // 3. Insert into Database
     const stmt = db.prepare(`
             INSERT INTO students (
                 student_id, unique_id, password, name, email, phone, 
@@ -135,16 +179,25 @@ app.post("/api/admin/students", (req, res) => {
         `);
 
     stmt.run(
-      finalId, uniqueId, s.name, finalEmail, s.phone,
-      s.program || `B.Sc in ${s.department}`, s.department,
-      s.admitted_semester, admittedYear, "Fall-2025",
+      finalId,
+      uniqueId,
+      s.name,
+      finalEmail,
+      s.phone,
+      s.program || `B.Sc in ${s.department}`,
+      s.department,
+      s.admitted_semester,
+      admittedYear,
+      "Fall-2025",
       s.dob, s.blood_group, s.nid, s.marital_status,
       s.present_address, s.permanent_address,
       s.advisor_name, s.advisor_email
     );
 
     res.json({ success: true, message: `Student Created! ID: ${finalId}` });
+
   } catch (e) {
+    console.error("Create Student Error:", e.message);
     res.status(500).json({ error: e.message });
   }
 });

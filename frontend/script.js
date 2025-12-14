@@ -44,7 +44,7 @@ window.showLogin = function (role) {
 
   if (loginRole === "faculty" || loginRole === "admin") {
     title.innerText = "Faculty & Admin Portal";
-    title.style.color = "#7c3aed"; // Purple for Admin
+    title.style.color = "#ec282bff"; // Purple for Admin
     label.innerText = "Email or Faculty ID";
     input.placeholder = "admin@san.edu / F-CSE-101";
   } else {
