@@ -27,6 +27,8 @@ try {
             dob TEXT, blood_group TEXT, nid TEXT, marital_status TEXT,
             present_address TEXT, permanent_address TEXT,
             advisor_name TEXT, advisor_email TEXT,
+            payment_status TEXT DEFAULT 'Paid', -- 'Due', 'Paid', 'Refunded'
+            previous_due REAL DEFAULT 500,       -- Carried over balance
             gpa REAL DEFAULT 0.0,
             avatar TEXT DEFAULT 'https://ui-avatars.com/api/?name=Student&background=4F46E5&color=fff',
             advising_status TEXT DEFAULT 'pending'

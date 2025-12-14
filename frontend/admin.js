@@ -966,14 +966,99 @@ async function postAnnouncement(e) {
   e.target.reset();
 }
 
+
 // =========================================================
-// 10. FINANCIALS
+// 10. FINANCIALS (FIXED: credits -> total_credits)
 // =========================================================
 async function loadFinancials() {
-  const res = await fetch(`${API_URL}/admin/financials`);
-  const data = await res.json();
-  document.getElementById("financialsList").innerHTML = `<table style="width:100%"><thead><tr><th>ID</th><th>Name</th><th>Credits</th><th>Due</th><th>Status</th></tr></thead><tbody>${data
-    .map((r) => `<tr><td>${r.student_id}</td><td>${r.name}</td><td>${r.credits}</td><td>$${r.amountDue}</td><td style="color:${r.status === "Pending" ? "orange" : "green"}">${r.status}</td></tr>`).join("")}</tbody></table>`;
+  try {
+    const res = await fetch(`${API_URL}/admin/financials`);
+    const data = await res.json();
+
+    const tbody = document.getElementById("financialsList");
+
+    tbody.innerHTML = `
+            <table style="width:100%; border-collapse: collapse; font-size: 0.9em;">
+                <thead>
+                    <tr style="background:#f8fafc; text-align:left; border-bottom:2px solid #e2e8f0;">
+                        <th style="padding:12px;">Student</th>
+                        <th style="padding:12px;">Credits</th>
+                        <th style="padding:12px; color:#64748b;">Prev. Due</th>
+                        <th style="padding:12px; color:#64748b;">Current Sem</th>
+                        <th style="padding:12px; font-weight:800;">Total Payable</th>
+                        <th style="padding:12px;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.map((r) => {
+      const isPaid = r.payment_status === 'Paid';
+      // If paid, visual total is usually 0 effectively, but let's show what was paid or 0
+      // Since we wipe previous_due on payment, total_payable will drop to just current charges or 0 depending on logic.
+      // Ideally, if Paid, show $0 or "Cleared".
+      const displayTotal = isPaid ? "$0.00" : `$${r.total_payable}`;
+      const displayPrev = isPaid ? "$0" : `$${r.previous_due}`;
+
+      // Status Dropdown Colors
+      const bg = isPaid ? '#dcfce7' : '#ffedd5';
+      const txt = isPaid ? '#166534' : '#9a3412';
+
+      return `
+                        <tr style="border-bottom:1px solid #f1f5f9;">
+                            <td style="padding:12px;">
+                                <div style="font-weight:600;">${r.student_id}</div>
+                                <div style="font-size:0.85em; color:#64748b;">${r.name}</div>
+                            </td>
+                            <td style="padding:12px; font-weight:bold;">${r.total_credits}</td>
+                            <td style="padding:12px; color:#dc2626;">${displayPrev}</td>
+                            <td style="padding:12px;">$${r.current_charges}</td>
+                            <td style="padding:12px; font-weight:900; color:#1e293b; font-size:1.1em;">
+                                ${displayTotal}
+                            </td>
+                            <td style="padding:12px;">
+                                <select 
+                                    onchange="updateFinancialStatus('${r.student_id}', this.value)"
+                                    style="padding: 6px; border-radius: 6px; border:1px solid #cbd5e1; background:${bg}; color:${txt}; font-weight:600; cursor:pointer;"
+                                >
+                                    <option value="Due" ${r.payment_status === 'Due' ? 'selected' : ''}>Due</option>
+                                    <option value="Paid" ${r.payment_status === 'Paid' ? 'selected' : ''}>Paid (Clear)</option>
+                                    <option value="Refunded" ${r.payment_status === 'Refunded' ? 'selected' : ''}>Refunded</option>
+                                </select>
+                            </td>
+                        </tr>
+                        `;
+    }).join("")}
+                </tbody>
+            </table>
+        `;
+  } catch (e) {
+    console.error("Error loading financials:", e);
+    document.getElementById("financialsList").innerHTML = "<p style='color:red; text-align:center;'>Failed to load financial data.</p>";
+  }
+}
+
+// Function triggered when dropdown changes
+async function updateFinancialStatus(studentId, newStatus) {
+  if (newStatus === 'Paid' && !confirm("Marking as PAID will clear the Previous Due balance. Proceed?")) {
+    loadFinancials(); // Revert UI selection
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_URL}/admin/financials/status`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studentId, status: newStatus }),
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      loadFinancials(); // Reload to see the balance update to $0
+    } else {
+      alert("Update failed: " + data.error);
+    }
+  } catch (e) {
+    alert("Connection Error");
+  }
 }
 
 // =========================================================

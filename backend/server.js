@@ -398,22 +398,62 @@ app.post("/api/admin/grades", (req, res) => {
   }
 });
 
-// --- 5. FINANCIALS & ADMINS ---
+// ============= 7. FINANCIALS (PREVIOUS + CURRENT LOGIC) =============
+
+// GET FINANCIAL REPORT
 app.get("/api/admin/financials", (req, res) => {
   try {
-    const report = db.prepare(
-      `SELECT s.student_id, s.name, SUM(c.credits) as total_credits 
-         FROM students s 
-         LEFT JOIN student_courses sc ON s.id = sc.student_id AND sc.status = 'enrolled' 
-         LEFT JOIN courses c ON sc.course_id = c.id 
-         GROUP BY s.id`
-    ).all();
-    const data = report.map((r) => ({
-      ...r,
-      amountDue: (r.total_credits || 0) * 150 + 500,
-      status: r.total_credits > 0 ? "Pending" : "Paid/Refunded",
-    }));
+    const report = db.prepare(`
+            SELECT 
+                s.student_id, 
+                s.name, 
+                s.payment_status, 
+                s.previous_due,  -- Fetch Previous Due
+                SUM(c.credits) as total_credits 
+            FROM students s 
+            LEFT JOIN student_courses sc ON s.id = sc.student_id AND sc.status = 'enrolled' 
+            LEFT JOIN courses c ON sc.course_id = c.id 
+            GROUP BY s.id
+        `).all();
+
+    const data = report.map((r) => {
+      const credits = r.total_credits || 0;
+      // Cost Logic: $150 per credit + $500 Base Fee
+      const currentCharges = (credits * 150);
+      const prevDue = r.previous_due || 0;
+
+      // Total Payable
+      return {
+        ...r,
+        total_credits: credits,
+        current_charges: currentCharges,
+        previous_due: prevDue,
+        total_payable: currentCharges + prevDue
+      };
+    });
+
     res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// UPDATE PAYMENT STATUS & CLEAR DUES
+app.put("/api/admin/financials/status", (req, res) => {
+  try {
+    const { studentId, status } = req.body;
+
+    if (status === 'Paid') {
+      // If paying, clear the previous due balance as well
+      db.prepare("UPDATE students SET payment_status = ?, previous_due = 0 WHERE student_id = ?")
+        .run(status, studentId);
+    } else {
+      // Just update status (e.g. marked as Refunded or back to Due)
+      db.prepare("UPDATE students SET payment_status = ? WHERE student_id = ?")
+        .run(status, studentId);
+    }
+
+    res.json({ success: true, message: "Status Updated & Balance Adjusted" });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
