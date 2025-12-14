@@ -90,36 +90,33 @@ app.delete("/api/admin/faculty/:id", (req, res) => {
   }
 });
 
-// --- 2. STUDENT MANAGEMENT (Smart ID Generation) ---
+// --- 2. STUDENT MANAGEMENT (Auto ID & Locked Email) ---
 app.get("/api/admin/students", (req, res) => {
-  try {
-    const { search } = req.query;
-    let query = "SELECT * FROM students";
-    if (search)
-      query += ` WHERE student_id LIKE '%${search}%' OR name LIKE '%${search}%'`;
-    query += " ORDER BY student_id DESC LIMIT 50";
-    res.json(db.prepare(query).all());
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+    try {
+        const { search } = req.query;
+        let query = "SELECT * FROM students";
+        if (search) query += ` WHERE student_id LIKE '%${search}%' OR name LIKE '%${search}%'`;
+        query += " ORDER BY student_id DESC LIMIT 50";
+        res.json(db.prepare(query).all());
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
+// CREATE STUDENT (Auto ID + Auto Email)
 app.post("/api/admin/students", (req, res) => {
-  try {
-    const s = req.body;
-    let finalId = s.student_id; // Check if manual ID provided
-
-    // If NO manual ID, generate one: Year-SemCode-DeptCode-Serial
-    if (!finalId || finalId.trim() === "") {
+    try {
+        const s = req.body;
+        
+        // 1. Generate ID Logic
         const admittedYear = s.admitted_year || new Date().getFullYear();
         const admittedSem = s.admitted_semester || "Fall";
         const dept = s.department || "General";
 
-        // Map Semester to Code
+        // Map Semester/Dept to Codes
         const semMap = { "Spring": 1, "Summer": 2, "Fall": 3 };
-        const sCode = semMap[admittedSem] || 3; 
+        const sCode = semMap[admittedSem] || 3;
 
-        // Map Department to Code
         const deptMap = { "CSE": 60, "EEE": 50, "BBA": 40, "ACT": 30, "ENG": 20 };
         const dCode = deptMap[dept] || 99;
 
@@ -128,65 +125,67 @@ app.post("/api/admin/students", (req, res) => {
         const count = countQuery.get(admittedYear, admittedSem, dept).c;
         const serial = String(count + 1).padStart(3, "0");
 
-        finalId = `${admittedYear}-${sCode}-${dCode}-${serial}`;
-    }
+        // FINAL ID
+        const finalId = `${admittedYear}-${sCode}-${dCode}-${serial}`;
+        
+        // 2. Auto-Generate Email
+        const finalEmail = `${finalId}@gmail.com`;
 
-    const uniqueId = s.unique_id || `U-${Math.floor(Math.random() * 1000000)}`;
+        const uniqueId = `U-${Math.floor(Math.random() * 1000000)}`;
 
-    const stmt = db.prepare(`
+        const stmt = db.prepare(`
             INSERT INTO students (
-                student_id, unique_id, password, name, email, phone, program, department, 
-                admitted_semester, year, semester, dob, blood_group, nid, marital_status, 
+                student_id, unique_id, password, name, email, phone, 
+                program, department, admitted_semester, year, semester, 
+                dob, blood_group, nid, marital_status, 
                 present_address, permanent_address, advisor_name, advisor_email
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
-    stmt.run(
-      finalId,
-      uniqueId,
-      "123456", // Default password
-      s.name,
-      s.email,
-      s.phone,
-      s.program || `B.Sc in ${s.department}`,
-      s.department,
-      s.admitted_semester,
-      s.admitted_year,
-      "Fall-2025", // Current Enrolled Semester
-      s.dob,
-      s.blood_group,
-      s.nid,
-      s.marital_status,
-      s.present_address,
-      s.permanent_address,
-      s.advisor_name,
-      s.advisor_email
-    );
-    res.json({ success: true, message: `Student Created! ID: ${finalId}` });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+        stmt.run(
+            finalId, uniqueId, "123456", // Default password
+            s.name, finalEmail, s.phone,
+            s.program || `B.Sc in ${s.department}`, s.department,
+            s.admitted_semester, admittedYear, 
+            "Fall-2025", // Current Enrolled Semester (Default)
+            s.dob, s.blood_group, s.nid, s.marital_status,
+            s.present_address, s.permanent_address,
+            s.advisor_name, s.advisor_email
+        );
+
+        res.json({ success: true, message: `Student Created! ID: ${finalId}` });
+
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
+// UPDATE STUDENT (Prevents ID/Email changes)
 app.put("/api/admin/students/:id", (req, res) => {
-  try {
-    const s = req.body;
-    const stmt = db.prepare(`
+    try {
+        const s = req.body;
+        // Notice: 'email' and 'student_id' are REMOVED from the SET clause
+        const stmt = db.prepare(`
             UPDATE students SET 
-            name=?, email=?, phone=?, program=?, department=?, year=?, semester=?, 
-            dob=?, blood_group=?, nid=?, marital_status=?, present_address=?, permanent_address=?, 
-            advisor_name=?, advisor_email=? 
+                name=?, phone=?, program=?, department=?, 
+                year=?, semester=?, dob=?, blood_group=?, 
+                nid=?, marital_status=?, present_address=?, permanent_address=?, 
+                advisor_name=?, advisor_email=?
             WHERE student_id = ?
         `);
-    stmt.run(
-      s.name, s.email, s.phone, s.program, s.department, s.year, s.semester,
-      s.dob, s.blood_group, s.nid, s.marital_status, s.present_address, s.permanent_address,
-      s.advisor_name, s.advisor_email, req.params.id
-    );
-    res.json({ success: true, message: "Student Profile Updated" });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+
+        stmt.run(
+            s.name, s.phone, s.program, s.department,
+            s.year, s.semester, s.dob, s.blood_group,
+            s.nid, s.marital_status, s.present_address, s.permanent_address,
+            s.advisor_name, s.advisor_email,
+            req.params.id // WHERE clause
+        );
+
+        res.json({ success: true, message: "Student Profile Updated" });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 app.delete("/api/admin/students/:id", (req, res) => {

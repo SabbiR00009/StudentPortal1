@@ -5,6 +5,7 @@ let currentEditingStudentId = null; // Tracks the DB ID of the student being edi
 document.addEventListener("DOMContentLoaded", () => {
   // 1. Initial Data Load
   loadStudents();
+  loadFacultyForDropdowns(); // <--- NEW: Populate Advisor Dropdowns immediately
 
   // 2. Event Listeners for Forms
   document.getElementById("addCourseForm").addEventListener("submit", addCourse);
@@ -35,6 +36,29 @@ document.addEventListener("DOMContentLoaded", () => {
   // 4. Setup Admin Avatar
   setupAdminAvatar();
 });
+
+// --- NEW FUNCTION: LOAD FACULTY FOR DROPDOWNS ---
+async function loadFacultyForDropdowns() {
+    try {
+        const res = await fetch(`${API_URL}/admin/faculty`);
+        const faculty = await res.json();
+        
+        // Create Options: Value = Email, Data-Name = Name
+        const options = `<option value="" disabled selected>Select Faculty Advisor...</option>` + 
+            faculty.map(f => `<option value="${f.email}" data-name="${f.name}">${f.name} (${f.department})</option>`).join("");
+
+        // Populate Register Modal Dropdown
+        const nsSelect = document.getElementById("nsAdvisorSelect");
+        if (nsSelect) nsSelect.innerHTML = options;
+
+        // Populate Edit Modal Dropdown
+        const editSelect = document.getElementById("editAdvisorSelect");
+        if (editSelect) editSelect.innerHTML = options;
+
+    } catch (e) {
+        console.error("Error loading faculty for dropdowns:", e);
+    }
+}
 
 // --- ADMIN AVATAR & PROFILE LOGIC ---
 function setupAdminAvatar() {
@@ -126,51 +150,57 @@ async function loadStudents() {
 function searchStudents() { loadStudents(); }
 function openAddStudentModal() { document.getElementById("studentModal").style.display = "flex"; }
 
-// [FIXED] REGISTER STUDENT FUNCTION
+// [FIXED] REGISTER STUDENT FUNCTION (Now uses Dropdown)
 async function registerStudent(e) {
-  e.preventDefault();
-  
-  // Helper to safely get values
-  const getVal = (id) => document.getElementById(id) ? document.getElementById(id).value : "";
-
-  const body = {
-    // Optional Manual ID (Backend handles generation if empty)
-    student_id: getVal("nsId"),
-
-    name: getVal("nsName"),
-    email: getVal("nsEmail"),
-    phone: getVal("nsPhone"),
+    e.preventDefault();
     
-    // Smart ID Data
-    department: getVal("nsDept"),
-    admitted_year: getVal("nsYear"),
-    admitted_semester: getVal("nsSem"),
+    // Helper to safely get values
+    const getVal = (id) => document.getElementById(id) ? document.getElementById(id).value : "";
 
-    advisor_name: getVal("nsAdvisor"),
-    advisor_email: getVal("nsAdvisorEmail"),
-  };
+    // GET ADVISOR FROM DROPDOWN
+    const advSelect = document.getElementById("nsAdvisorSelect");
+    let advName = "Not Assigned";
+    let advEmail = "";
 
-  try {
-    const res = await fetch(`${API_URL}/admin/students`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const data = await res.json();
-    
-    if (data.success) {
-      alert(data.message); // e.g., "Student Created! ID: 2025-3-60-001"
-      document.getElementById("studentModal").style.display = "none";
-      e.target.reset();
-      loadStudents();
-    } else {
-      // Fix for "undefined" error - checks both error fields
-      alert("Error: " + (data.error || data.message));
+    if (advSelect.selectedIndex > 0) {
+        const selectedOpt = advSelect.options[advSelect.selectedIndex];
+        advEmail = advSelect.value;
+        advName = selectedOpt.getAttribute("data-name");
     }
-  } catch (err) {
-    console.error(err);
-    alert("Connection Error");
-  }
+
+    const body = {
+        name: getVal("nsName"),
+        phone: getVal("nsPhone"),
+        department: getVal("nsDept"),
+        admitted_year: getVal("nsYear"),
+        admitted_semester: getVal("nsSem"),
+        program: getVal("nsProgram"),
+        // Auto-assign values from dropdown
+        advisor_name: advName,
+        advisor_email: advEmail,
+    };
+
+    try {
+        const res = await fetch(`${API_URL}/admin/students`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            alert(data.message); 
+            document.getElementById("studentModal").style.display = "none";
+            e.target.reset();
+            loadStudents();
+        } else {
+            alert("Error: " + (data.error || data.message));
+        }
+    } catch (err) {
+        console.error(err);
+        alert("Connection Error");
+    }
 }
 
 async function deleteStudent(studentId) {
@@ -208,6 +238,7 @@ async function registerFaculty(e) {
             document.getElementById("facultyModal").style.display = 'none';
             e.target.reset();
             loadFaculty();
+            loadFacultyForDropdowns(); // Refresh dropdowns
         } else {
             alert("Error: " + (data.error || "Unknown Error"));
         }
@@ -235,12 +266,17 @@ async function deleteFaculty(id) {
   if (!confirm("Delete Faculty Member?")) return;
   await fetch(`${API_URL}/admin/faculty/${id}`, { method: "DELETE" });
   loadFaculty();
+  loadFacultyForDropdowns(); // Refresh dropdowns
 }
 
 // --- EDIT STUDENT & COURSE MANAGEMENT LOGIC ---
 
 async function openEditStudentModal(studentId, dbId) {
   currentEditingStudentId = dbId; 
+  
+  // 1. Refresh Dropdown first
+  await loadFacultyForDropdowns();
+
   const res = await fetch(`${API_URL}/students/${dbId}`);
   const s = await res.json();
 
@@ -256,8 +292,14 @@ async function openEditStudentModal(studentId, dbId) {
   document.getElementById("editDob").value = s.dob || "";
   document.getElementById("editBlood").value = s.blood_group || "";
   document.getElementById("editPresentAddr").value = s.present_address || "";
-  document.getElementById("editAdvisorName").value = s.advisor_name || "";
-  document.getElementById("editAdvisorEmail").value = s.advisor_email || "";
+  
+  // 2. Set Dropdown Value
+  const advSelect = document.getElementById("editAdvisorSelect");
+  if (s.advisor_email) {
+      advSelect.value = s.advisor_email;
+  } else {
+      advSelect.value = "";
+  }
 
   loadAdminStudentCourses(dbId);
   document.getElementById("editStudentModal").style.display = "flex";
@@ -268,9 +310,19 @@ async function updateStudentProfile(e) {
   const dbId = document.getElementById("editStudentDbId").value;
   const studentId = document.getElementById("editStudentId").value;
 
+  // GET ADVISOR FROM DROPDOWN
+  const advSelect = document.getElementById("editAdvisorSelect");
+  let advName = "";
+  let advEmail = "";
+  
+  if (advSelect.selectedIndex > 0) { // If something is selected (index 0 is placeholder)
+      const selectedOpt = advSelect.options[advSelect.selectedIndex];
+      advEmail = advSelect.value;
+      advName = selectedOpt.getAttribute("data-name");
+  }
+
   const body = {
     name: document.getElementById("editName").value,
-    email: document.getElementById("editEmail").value,
     phone: document.getElementById("editPhone").value,
     department: document.getElementById("editDept").value,
     program: document.getElementById("editProgram").value,
@@ -279,8 +331,9 @@ async function updateStudentProfile(e) {
     dob: document.getElementById("editDob").value,
     blood_group: document.getElementById("editBlood").value,
     present_address: document.getElementById("editPresentAddr").value,
-    advisor_name: document.getElementById("editAdvisorName").value,
-    advisor_email: document.getElementById("editAdvisorEmail").value,
+    // Update Advisor
+    advisor_name: advName,
+    advisor_email: advEmail,
   };
 
   try {
