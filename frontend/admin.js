@@ -5,7 +5,7 @@ let currentEditingStudentId = null; // Tracks the DB ID of the student being edi
 document.addEventListener("DOMContentLoaded", () => {
   // 1. Initial Data Load
   loadStudents();
-  loadFacultyForDropdowns(); // <--- NEW: Populate Advisor Dropdowns immediately
+  loadFacultyForDropdowns(); // <--- CRITICAL: Populate Advisor Dropdowns immediately
 
   // 2. Event Listeners for Forms
   document.getElementById("addCourseForm").addEventListener("submit", addCourse);
@@ -37,7 +37,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupAdminAvatar();
 });
 
-// --- NEW FUNCTION: LOAD FACULTY FOR DROPDOWNS ---
+// --- HELPER: LOAD FACULTY FOR DROPDOWNS ---
 async function loadFacultyForDropdowns() {
     try {
         const res = await fetch(`${API_URL}/admin/faculty`);
@@ -112,7 +112,9 @@ function logout() {
   window.location.href = "index.html";
 }
 
-// --- 1. MANAGE STUDENTS ---
+// =========================================================
+// 1. MANAGE STUDENTS (CORRECTED LOGIC)
+// =========================================================
 async function loadStudents() {
   const search = document.getElementById("studentSearch").value;
   const url = search
@@ -150,7 +152,7 @@ async function loadStudents() {
 function searchStudents() { loadStudents(); }
 function openAddStudentModal() { document.getElementById("studentModal").style.display = "flex"; }
 
-// [FIXED] REGISTER STUDENT FUNCTION (Now uses Dropdown)
+// REGISTER STUDENT (Uses Dropdown Logic)
 async function registerStudent(e) {
     e.preventDefault();
     
@@ -213,13 +215,13 @@ async function deleteStudent(studentId) {
   }
 }
 
-// --- 2. FACULTY MANAGEMENT ---
+// =========================================================
+// 2. FACULTY MANAGEMENT (CORRECTED LOGIC)
+// =========================================================
 function openAddFacultyModal() { document.getElementById("facultyModal").style.display = "flex"; }
 
-// [FIXED] REGISTER FACULTY FUNCTION
 async function registerFaculty(e) {
     e.preventDefault();
-
     const body = {
         name: document.getElementById("nfName").value,
         department: document.getElementById("nfDept").value,
@@ -232,20 +234,17 @@ async function registerFaculty(e) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body)
         });
-        
         const data = await res.json();
-        
         if(data.success) {
             alert(data.message); // Shows: "Faculty Added! ID: F-CSE-xxx"
             document.getElementById("facultyModal").style.display = 'none';
             e.target.reset();
             loadFaculty();
-            loadFacultyForDropdowns(); // Refresh the dropdowns in the Student Registration form
+            loadFacultyForDropdowns(); // CRITICAL: Refresh the dropdowns for student registration
         } else {
             alert("Error: " + (data.error || "Unknown Error"));
         }
     } catch(err) {
-        console.error(err);
         alert("Connection Error");
     }
 }
@@ -272,7 +271,9 @@ async function deleteFaculty(id) {
   loadFacultyForDropdowns(); // Refresh dropdowns
 }
 
-// --- EDIT STUDENT & COURSE MANAGEMENT LOGIC ---
+// =========================================================
+// 3. EDIT STUDENT & COURSE MANAGEMENT LOGIC
+// =========================================================
 
 async function openEditStudentModal(studentId, dbId) {
   currentEditingStudentId = dbId; 
@@ -318,7 +319,7 @@ async function updateStudentProfile(e) {
   let advName = "";
   let advEmail = "";
   
-  if (advSelect.selectedIndex > 0) { // If something is selected (index 0 is placeholder)
+  if (advSelect.selectedIndex > 0) { 
       const selectedOpt = advSelect.options[advSelect.selectedIndex];
       advEmail = advSelect.value;
       advName = selectedOpt.getAttribute("data-name");
@@ -356,7 +357,9 @@ async function updateStudentProfile(e) {
   }
 }
 
-// --- ADMIN COURSE ACTIONS FOR STUDENT ---
+// =========================================================
+// 4. ADMIN COURSE ACTIONS FOR STUDENT
+// =========================================================
 
 async function loadAdminStudentCourses(dbId) {
   const res = await fetch(`${API_URL}/students/${dbId}/courses`);
@@ -471,7 +474,9 @@ async function adminDropSemester(dbId) {
   loadStudents();
 }
 
-// --- 3. MANAGE COURSES (With Seat Control) ---
+// =========================================================
+// 5. MANAGE COURSES (With Seat Control)
+// =========================================================
 
 async function loadAdminCourses() {
     try {
@@ -570,7 +575,9 @@ async function deleteCourse(id) {
     } catch(e) { console.error(e); }
 }
 
-// --- 4. UPLOAD GRADES ---
+// =========================================================
+// 6. UPLOAD GRADES
+// =========================================================
 async function uploadGrade(e) {
   e.preventDefault();
   const body = {
@@ -588,7 +595,9 @@ async function uploadGrade(e) {
   alert(data.success ? "Grade Updated!" : "Error: " + data.error);
 }
 
-// --- 5. SEMESTERS ---
+// =========================================================
+// 7. SEMESTERS
+// =========================================================
 async function addSemester(e) {
   e.preventDefault();
   const body = {
@@ -604,7 +613,9 @@ async function addSemester(e) {
   alert("Semester Opened!");
 }
 
-// --- 6. ADVISING SLOTS (Gatekeeper) ---
+// =========================================================
+// 8. ADVISING SLOTS (Gatekeeper)
+// =========================================================
 async function loadSlots() {
     const res = await fetch(`${API_URL}/admin/slots`);
     const slots = await res.json();
@@ -653,7 +664,9 @@ async function deleteSlot(id) {
     loadSlots();
 }
 
-// --- 7. ANNOUNCEMENTS ---
+// =========================================================
+// 9. ANNOUNCEMENTS
+// =========================================================
 async function postAnnouncement(e) {
   e.preventDefault();
   const body = {
@@ -670,7 +683,9 @@ async function postAnnouncement(e) {
   e.target.reset();
 }
 
-// --- 8. FINANCIALS ---
+// =========================================================
+// 10. FINANCIALS
+// =========================================================
 async function loadFinancials() {
   const res = await fetch(`${API_URL}/admin/financials`);
   const data = await res.json();
@@ -678,7 +693,9 @@ async function loadFinancials() {
     .map((r) => `<tr><td>${r.student_id}</td><td>${r.name}</td><td>${r.credits}</td><td>$${r.amountDue}</td><td style="color:${r.status === "Pending" ? "orange" : "green"}">${r.status}</td></tr>`).join("")}</tbody></table>`;
 }
 
-// --- 9. ADD ADMIN ---
+// =========================================================
+// 11. ADD ADMIN
+// =========================================================
 async function addAdmin(e) {
   e.preventDefault();
   const body = {
