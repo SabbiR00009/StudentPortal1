@@ -358,54 +358,81 @@
           <div id="view-grades" class="view-section">
             <div class="card">
               <h3>
-                <i class="fas fa-file-signature"></i> Upload Student Grade
+                <i class="fas fa-file-signature"></i> Upload Student Grades
               </h3>
-              <form class="admin-form" id="gradeForm">
-                <div class="form-grid">
-                  <div class="input-group">
-                    <label>Student ID</label
-                    ><input
-                      id="gStudentId"
-                      placeholder="e.g. 2025-3-60-001"
-                      required
-                    />
-                  </div>
-                  <div class="input-group">
-                    <label>Course Code</label
-                    ><input
-                      id="gCourseCode"
-                      placeholder="e.g. CSE101"
-                      required
-                    />
-                  </div>
-                  <div class="input-group">
-                    <label>Grade</label>
-                    <select id="gGrade">
-                      <option value="" disabled selected>Select Grade</option>
-                      <option value="A">A</option>
-                      <option value="A-">A-</option>
-                      <option value="B+">B+</option>
-                      <option value="B">B</option>
-                      <option value="B-">B-</option>
-                      <option value="C+">C+</option>
-                      <option value="C">C</option>
-                      <option value="D">D</option>
-                      <option value="F">F</option>
-                    </select>
-                  </div>
-                  <div class="input-group">
-                    <label>Semester</label>
-                    <select id="gSemester">
-                      <option value="Fall-2025">Fall-2025</option>
-                      <option value="Summer-2025">Summer-2025</option>
-                      <option value="Spring-2025">Spring-2025</option>
-                    </select>
-                  </div>
+
+              <div class="form-grid" style="margin-bottom: 20px">
+                <div class="input-group" style="position: relative">
+                  <label>Search Student (ID or Name)</label>
+                  <input
+                    type="text"
+                    id="gradeStudentSearch"
+                    placeholder="Type to search..."
+                    autocomplete="off"
+                    onkeyup="searchStudentForGrades()"
+                  />
+                  <div
+                    id="gradeSearchResults"
+                    class="search-dropdown"
+                    style="display: none"
+                  ></div>
                 </div>
-                <button type="submit" class="admin-btn primary">
-                  Submit Grade
-                </button>
-              </form>
+
+                <div class="input-group">
+                  <label>Selected Student</label>
+                  <input
+                    id="selectedStudentName"
+                    readonly
+                    placeholder="No student selected"
+                    style="background: #f3f4f6; font-weight: bold"
+                  />
+                  <input type="hidden" id="selectedStudentDbId" />
+                </div>
+              </div>
+
+              <div
+                id="gradeEntrySection"
+                style="
+                  display: none;
+                  border-top: 2px dashed #e2e8f0;
+                  padding-top: 20px;
+                "
+              >
+                <div
+                  style="
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 10px;
+                  "
+                >
+                  <h4 style="margin: 0">Pending Courses (Fall-2025)</h4>
+                  <span style="font-size: 0.85em; color: #64748b"
+                    >Enter marks to auto-calculate grade</span
+                  >
+                </div>
+
+                <table class="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Course</th>
+                      <th>Credits</th>
+                      <th style="width: 120px">Marks (0-100)</th>
+                      <th>Grade</th>
+                      <th>GPA</th>
+                    </tr>
+                  </thead>
+                  <tbody id="gradeEntryTable"></tbody>
+                </table>
+                <div style="margin-top: 20px; text-align: right">
+                  <button
+                    onclick="submitBatchGrades()"
+                    class="admin-btn primary"
+                  >
+                    <i class="fas fa-save"></i> Save & Publish Grades
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
