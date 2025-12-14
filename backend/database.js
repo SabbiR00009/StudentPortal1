@@ -172,15 +172,6 @@ try {
         )
     `).run();
 
-  db.prepare(`
-  CREATE TABLE IF NOT EXISTS drop_schedule (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    semester TEXT,
-    start_date DATETIME,
-    end_date DATETIME,
-    is_active INTEGER DEFAULT 1
-  )`).run();
-
   console.log("Tables created successfully.");
 
 } catch (err) {
