@@ -261,27 +261,53 @@ app.post("/api/admin/student/drop", (req, res) => {
 // --- 4. COURSE & GRADE MANAGEMENT (With Dept & Seat Control) ---
 
 // Get All Courses (Admin List)
-app.get("/api/admin/courses", (req, res) => {
-  try {
-    const courses = db.prepare("SELECT * FROM courses ORDER BY code").all();
-    res.json(courses);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+// --- 4. COURSE & GRADE MANAGEMENT ---
+
+// A. NEW: Get Schedule Rules (Populates Dropdowns)
+app.get("/api/admin/config/schedules", (req, res) => {
+    try {
+        const rules = db.prepare("SELECT * FROM schedule_rules").all();
+        res.json(rules);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
-// Create Course
+// B. Get All Courses
+app.get("/api/admin/courses", (req, res) => {
+    try {
+        const courses = db.prepare("SELECT * FROM courses ORDER BY code").all();
+        res.json(courses); 
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// C. Create Course (Now accepts structured schedule data)
 app.post("/api/admin/courses", (req, res) => {
-  try {
-    const { code, name, department, credits, instructor, instructor_email, schedule, room_number, section, semester } = req.body;
-    db.prepare(
-      `INSERT INTO courses (code, name, department, credits, instructor, instructor_email, schedule, room_number, section, semester, max_students, enrolled_count) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 40, 0)`
-    ).run(code, name, department, credits, instructor, instructor_email, schedule, room_number, section, semester);
-    res.json({ success: true });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+    try {
+        const { 
+            code, name, department, credits, instructor, instructor_email, 
+            theory_days, theory_time, lab_day, lab_time, // <--- New Fields
+            room_number, section, semester 
+        } = req.body;
+
+        db.prepare(`
+            INSERT INTO courses (
+                code, name, department, credits, instructor, instructor_email, 
+                theory_days, theory_time, lab_day, lab_time,
+                room_number, section, semester, max_students, enrolled_count
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 40, 0)
+        `).run(
+            code, name, department, credits, instructor, instructor_email,
+            theory_days, theory_time, lab_day, lab_time,
+            room_number, section, semester
+        );
+
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 // Update Seat Capacity
