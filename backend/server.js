@@ -444,47 +444,61 @@ app.get("/api/students/:id", (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// GET COURSES (Now returns Theory/Lab details)
 app.get("/api/students/:id/courses", (req, res) => {
   try {
-    const courses = db.prepare(
-      `SELECT c.*, sc.status, sc.enrolled_at, g.semester as completed_semester 
-         FROM student_courses sc 
-         JOIN courses c ON sc.course_id = c.id 
-         LEFT JOIN grades g ON sc.student_id = g.student_id AND sc.course_id = g.course_id 
-         WHERE sc.student_id = ? 
-         ORDER BY CASE WHEN sc.status = 'enrolled' THEN 0 ELSE 1 END, g.semester DESC`
-    ).all(req.params.id);
+    const courses = db.prepare(`
+            SELECT c.*, sc.status, sc.enrolled_at, g.semester as completed_semester 
+            FROM student_courses sc 
+            JOIN courses c ON sc.course_id = c.id 
+            LEFT JOIN grades g ON sc.student_id = g.student_id AND sc.course_id = g.course_id 
+            WHERE sc.student_id = ? 
+            ORDER BY CASE WHEN sc.status = 'enrolled' THEN 0 ELSE 1 END, g.semester DESC
+        `).all(req.params.id);
     res.json(courses);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// GET GRADES (Now returns Marks and Points)
 app.get("/api/students/:id/grades", (req, res) => {
   try {
-    // UPDATED: Now returns Marks and Points too
-    const grades = db.prepare(
-      `SELECT c.name as course_name, c.code, c.credits, g.grade, g.point, g.marks, g.semester 
-         FROM grades g 
-         JOIN courses c ON g.course_id = c.id 
-         WHERE g.student_id = ? 
-         ORDER BY g.semester DESC`
-    ).all(req.params.id);
+    const grades = db.prepare(`
+            SELECT c.name as course_name, c.code, c.credits, g.grade, g.point, g.marks, g.semester 
+            FROM grades g 
+            JOIN courses c ON g.course_id = c.id 
+            WHERE g.student_id = ? 
+            ORDER BY g.semester DESC
+        `).all(req.params.id);
     res.json(grades);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// GET FINANCIALS (Now includes Previous Due + Current Charges)
 app.get("/api/students/:id/financials", (req, res) => {
   try {
-    const result = db.prepare(
-      `SELECT SUM(c.credits) as totalCredits FROM student_courses sc JOIN courses c ON sc.course_id = c.id WHERE sc.student_id = ? AND sc.status = 'enrolled'`
-    ).get(req.params.id);
+    // 1. Get Student Info (for Previous Due & Payment Status)
+    const student = db.prepare("SELECT payment_status, previous_due FROM students WHERE id = ?").get(req.params.id);
+
+    // 2. Calculate Current Credits
+    const result = db.prepare(`
+            SELECT SUM(c.credits) as totalCredits 
+            FROM student_courses sc 
+            JOIN courses c ON sc.course_id = c.id 
+            WHERE sc.student_id = ? AND sc.status = 'enrolled'
+        `).get(req.params.id);
+
     const credits = result.totalCredits || 0;
+    const currentCharges = (credits * 150) + 500; // $150/Cr + $500 Base
+    const previousDue = student.previous_due || 0;
+    const totalPayable = currentCharges + previousDue;
+
     res.json({
       credits,
-      tuition: credits * 150,
-      baseFee: 500,
-      total: credits * 150 + 500,
-      status: credits > 0 ? "Pending" : "Paid",
-      dueDate: "2025-12-15",
+      current_charges: currentCharges,
+      previous_due: previousDue,
+      total_payable: totalPayable,
+      status: student.payment_status, // 'Due', 'Paid', 'Refunded'
+      dueDate: "2025-12-15"
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -545,7 +559,60 @@ app.get("/api/advising/courses", (req, res) => {
     res.json(db.prepare(sql).all(...params));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+app.post("/api/advising/validate", (req, res) => {
+  try {
+    const { studentId, courseId, slipIds } = req.body;
 
+    // 1. Get Candidate Course
+    const newCourse = db.prepare("SELECT * FROM courses WHERE id = ?").get(courseId);
+    if (!newCourse) return res.status(404).json({ success: false, error: "Course not found" });
+
+    // 2. Get Real Enrolled Courses
+    const enrolled = db.prepare(`
+            SELECT c.* FROM student_courses sc 
+            JOIN courses c ON sc.course_id = c.id 
+            WHERE sc.student_id = ? AND sc.status = 'enrolled'
+        `).all(studentId);
+
+    // 3. Get "In-Slip" Courses (Virtual Schedule)
+    // (We map the IDs sent from frontend to actual course objects)
+    const slipCourses = slipIds.map(id => db.prepare("SELECT * FROM courses WHERE id = ?").get(id));
+
+    // 4. Combine Everything to check against
+    const currentSchedule = [...enrolled, ...slipCourses];
+
+    // 5. Run Checks
+
+    // A. Duplicate Code Check
+    const duplicate = currentSchedule.find(c => c.code === newCourse.code);
+    if (duplicate) {
+      // If IDs match, it's the exact same course
+      if (duplicate.id === newCourse.id) return res.json({ success: false, error: "Already selected/enrolled." });
+      // Different section of same course
+      return res.json({ success: false, error: `Duplicate: You have ${duplicate.code} (Section ${duplicate.section}) selected.` });
+    }
+
+    // B. Capacity Check (Optional, but good for UX)
+    if (newCourse.seats_available <= 0) { // Assuming your DB query updates seats, or check manually
+      const freshCourse = db.prepare("SELECT enrolled_count, max_students FROM courses WHERE id = ?").get(courseId);
+      if (freshCourse.enrolled_count >= freshCourse.max_students) {
+        return res.json({ success: false, error: "Course is Full." });
+      }
+    }
+
+    // C. Time Conflict Check
+    const check = checkTimeConflict(newCourse, currentSchedule);
+    if (check.conflict) {
+      return res.json({ success: false, error: check.message });
+    }
+
+    // If we get here, it's safe!
+    return res.json({ success: true });
+
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
 app.post("/api/advising/confirm", (req, res) => {
   const { studentId, courseIds } = req.body;
 

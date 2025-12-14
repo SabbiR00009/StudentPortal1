@@ -1,267 +1,171 @@
 const API_URL = "http://localhost:3000/api";
 let currentStudent = null;
-let advisingSlip = []; // Local cart for courses
-let pollingInterval = null; // Timer for seat updates
-let currentEnrolledCredits = 0; // Track credits for validation
-let loginRole = 'student'; // Tracks if user clicked "Student", "Faculty", or "Admin"
+let advisingSlip = [];
+let pollingInterval = null;
+let currentEnrolledCredits = 0;
+let loginRole = "student"; // Default role
 
-// --- 0. AUTO-FIX CSS (Self-Healing) ---
-(function fixStyles() {
-  if (!document.querySelector('link[rel="stylesheet"]')) {
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = "styles.css";
-    document.head.appendChild(link);
-    const fa = document.createElement("link");
-    fa.rel = "stylesheet";
-    fa.href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css";
-    document.head.appendChild(fa);
-  }
-})();
-
-// --- HISTORY MANAGEMENT ---
-window.addEventListener("popstate", (event) => {
-  if (event.state && event.state.view) {
-    switchView(event.state.view, null, false);
-  } else {
-    if (currentStudent) {
-        switchView("home", null, false);
-    } else {
-        showLanding();
-    }
-  }
-});
-
-// --- INITIALIZATION ---
-document.addEventListener("DOMContentLoaded", () => {
-  checkAuth(); // Determine start page
-
-  // 1. Login Form
-  const loginForm = document.getElementById("loginForm");
-  if (loginForm) loginForm.addEventListener("submit", handleLogin);
-
-  // 2. Logout
-  const logoutBtn = document.getElementById("logoutBtn");
-  if (logoutBtn) logoutBtn.addEventListener("click", logout);
-
-  // 3. Navigation Buttons
-  const navBtns = document.querySelectorAll(".nav-btn:not(#dropSemesterBtn)");
-  navBtns.forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      e.stopImmediatePropagation();
-      let viewName = btn.getAttribute("data-view");
-      if (!viewName && btn.id.startsWith("btn-")) viewName = btn.id.replace("btn-", "");
-      if (viewName) switchView(viewName, btn);
-    });
-  });
-
-  // 4. Logo Click -> Go to Home
-  const navLogo = document.getElementById("navLogo");
-  if (navLogo) {
-    navLogo.addEventListener("click", () => {
-      const homeBtn = document.querySelector('.nav-btn[data-view="home"]');
-      switchView("home", homeBtn);
-    });
-  }
-
-  // 5. Avatar Click -> Go to Profile
-  const userAvatar = document.getElementById("userAvatar");
-  if (userAvatar) {
-    userAvatar.addEventListener("click", () => {
-      switchView("profile", null);
-    });
-  }
-
-  // 6. Password Toggle
-  const togglePassword = document.getElementById("togglePassword");
-  const passwordInput = document.getElementById("password");
-  if (togglePassword && passwordInput) {
-      togglePassword.addEventListener("click", function () {
-          const type = passwordInput.getAttribute("type") === "password" ? "text" : "password";
-          passwordInput.setAttribute("type", type);
-          this.classList.toggle("fa-eye");
-          this.classList.toggle("fa-eye-slash");
-      });
-  }
-
-  // 7. Stat Cards
-  const statCards = document.querySelectorAll(".stat-card");
-  statCards.forEach((card) => {
-    card.addEventListener("click", () => {
-      const target = card.getAttribute("data-target");
-      if (target) {
-        const btn = document.querySelector(`.nav-btn[data-view="${target}"]`) || document.getElementById(`btn-${target}`);
-        switchView(target, btn);
-      }
-    });
-  });
-
-  // 8. Action Buttons
-  const confirmBtn = document.getElementById("confirmSlipBtn");
-  if (confirmBtn) confirmBtn.addEventListener("click", confirmAdvisingSlip);
-
-  const dropBtn = document.getElementById("dropSemesterBtn");
-  if (dropBtn) dropBtn.addEventListener("click", dropSemester);
-});
-
-// --- AUTH STATE & VIEW CONTROLLERS ---
+// =========================================================
+// AUTHENTICATION & LOGIN LOGIC (RESTORED)
+// =========================================================
 
 function checkAuth() {
-    const user = localStorage.getItem('san_student');
-    if (user) {
-        currentStudent = JSON.parse(user);
-        currentStudent.dbId = currentStudent.id || currentStudent._id;
-        showDashboard();
-    } else {
-        showLanding();
-    }
+  const stored = localStorage.getItem("san_student");
+  if (stored) {
+    currentStudent = JSON.parse(stored);
+    // Ensure dbId is set for backward compatibility
+    currentStudent.dbId = currentStudent.id || currentStudent._id;
+    showDashboard();
+  } else {
+    showLanding();
+  }
 }
 
-// Global functions for onclick handlers in HTML
-window.showLanding = function() {
-    document.getElementById("landingPage").style.display = "block";
-    document.getElementById("loginPage").style.display = "none";
-    document.getElementById("dashboard").style.display = "none";
-    window.scrollTo(0,0);
-}
-
-// [UPDATED] Show Login with strict Role context (Student, Admin, Faculty)
-window.showLogin = function(type) {
-    loginRole = type || 'student'; 
-    
-    document.getElementById("landingPage").style.display = "none";
-    document.getElementById("loginPage").style.display = "flex";
-    document.getElementById("dashboard").style.display = "none";
-
-    // UI Elements
-    const titleEl = document.getElementById("loginTitle");
-    const labelEl = document.querySelector("#loginForm label");
-    const inputEl = document.getElementById("studentId");
-
-    // Check if it is the Faculty/Admin button
-    if (loginRole === 'faculty' || loginRole === 'admin') {
-        titleEl.innerText = "Faculty & Admin Portal";
-        titleEl.style.color = "#7c3aed"; // Purple
-        labelEl.innerText = "Email or Faculty ID";
-        inputEl.placeholder = "admin@san.edu / F001";
-    } else {
-        // STUDENT VIEW
-        titleEl.innerText = "Student Sign In";
-        titleEl.style.color = "#1e3a8a"; // Blue
-        labelEl.innerText = "Student ID";
-        inputEl.placeholder = "e.g., 2025-3-60-001";
-    }
-
-    // Clear inputs
-    inputEl.value = "";
-    document.getElementById("password").value = "";
-    document.getElementById("errorMessage").style.display = "none";
-}
-
-function showDashboard() {
-  document.getElementById("landingPage").style.display = "none";
+// 1. LANDING & LOGIN UI TOGGLE
+window.showLanding = function () {
+  document.getElementById("landingPage").style.display = "block";
   document.getElementById("loginPage").style.display = "none";
-  document.getElementById("dashboard").style.display = "block";
-  
-  // Header Info
-  document.getElementById("welcomeMessage").innerText = `Welcome back, ${currentStudent.name.split(" ")[0]}!`;
-  document.getElementById("userName").innerText = currentStudent.name;
-  document.getElementById("userIdDisplay").innerText = `ID: ${currentStudent.student_id}`;
-  
-  // Avatar
-  const avatarUrl = currentStudent.avatar || `https://ui-avatars.com/api/?name=${currentStudent.name}&background=4F46E5&color=fff`;
-  document.getElementById("userAvatar").innerHTML = `<img src="${avatarUrl}" alt="Profile" style="width:100%; height:100%; object-fit:cover; display:block;">`;
+  document.getElementById("dashboard").style.display = "none";
+  window.scrollTo(0, 0);
+};
 
-  // Init View
-  const initialView = location.hash.replace("#", "") || "home";
-  const initialBtn = document.querySelector(`.nav-btn[data-view="${initialView}"]`);
-  switchView(initialView, initialBtn, false);
+// restored the "Perfect" logic for toggling UI based on role
+window.showLogin = function (role) {
+  loginRole = role || "student";
 
-  loadHomeData();
-  loadAnnouncements();
-}
+  document.getElementById("landingPage").style.display = "none";
+  document.getElementById("loginPage").style.display = "flex";
+  document.getElementById("dashboard").style.display = "none";
 
+  const title = document.getElementById("loginTitle");
+  const label = document.querySelector("#loginForm label");
+  const input = document.getElementById("studentId");
+  const errorMsg = document.getElementById("errorMessage");
+
+  if (loginRole === "faculty" || loginRole === "admin") {
+    title.innerText = "Faculty & Admin Portal";
+    title.style.color = "#7c3aed"; // Purple for Admin
+    label.innerText = "Email or Faculty ID";
+    input.placeholder = "admin@san.edu / F-CSE-101";
+  } else {
+    title.innerText = "Student Sign In";
+    title.style.color = "#1e3a8a"; // Blue for Student
+    label.innerText = "Student ID";
+    input.placeholder = "e.g., 2025-3-60-001";
+  }
+
+  // Clear inputs
+  input.value = "";
+  document.getElementById("password").value = "";
+  errorMsg.style.display = "none";
+  errorMsg.innerText = "";
+};
+
+// 2. HANDLE LOGIN (With Redirection)
 async function handleLogin(e) {
   e.preventDefault();
-  const inputVal = document.getElementById("studentId").value;
-  const password = document.getElementById("password").value;
-  const errEl = document.getElementById("errorMessage");
+
+  const id = document.getElementById("studentId").value.trim();
+  const password = document.getElementById("password").value.trim();
+  const errorDisplay = document.getElementById("errorMessage");
+
+  if (!id || !password) {
+    errorDisplay.innerText = "Please enter both ID and Password.";
+    errorDisplay.style.display = "block";
+    return;
+  }
 
   try {
     const res = await fetch(`${API_URL}/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-          id: inputVal, 
-          password: password,
-          role: loginRole 
-      }),
+      body: JSON.stringify({ id, password, role: loginRole })
     });
 
     const data = await res.json();
 
-    if (res.ok) {
-      // 1. ADMIN REDIRECT
+    if (res.ok && data.success) {
+      // A. Admin Login
       if (data.userType === "admin") {
         sessionStorage.setItem("adminUser", JSON.stringify(data.user));
         window.location.href = "admin.html";
         return;
       }
-      
-      // 2. FACULTY REDIRECT (New)
+
+      // B. Faculty Login
       if (data.userType === "faculty") {
         sessionStorage.setItem("facultyUser", JSON.stringify(data.user));
         window.location.href = "faculty.html";
         return;
       }
 
-      // 3. STUDENT DASHBOARD
-      currentStudent = data.student;
-      currentStudent.dbId = data.student.id || data.student._id;
-      localStorage.setItem('san_student', JSON.stringify(currentStudent));
-      showDashboard();
+      // C. Student Login
+      if (data.userType === "student") {
+        currentStudent = data.student;
+        currentStudent.dbId = currentStudent.id || currentStudent._id;
+        localStorage.setItem("san_student", JSON.stringify(currentStudent));
+        showDashboard();
+      }
     } else {
-      errEl.innerText = data.error || "Login failed";
-      errEl.style.display = "block";
+      // Show error from server
+      errorDisplay.innerText = data.error || "Login failed. Check credentials.";
+      errorDisplay.style.display = "block";
     }
-  } catch (e) {
-    console.error(e);
-    errEl.innerText = "Server Connection Failed.";
-    errEl.style.display = "block";
+  } catch (err) {
+    console.error(err);
+    errorDisplay.innerText = "Server connection failed.";
+    errorDisplay.style.display = "block";
   }
 }
 
 function logout() {
-    localStorage.removeItem('san_student');
-    window.location.href = "index.html"; 
+  localStorage.removeItem("san_student");
+  window.location.href = "index.html";
 }
 
-// --- NAVIGATION ---
+// =========================================================
+// DASHBOARD & NAVIGATION
+// =========================================================
 
-function switchView(viewName, btn, updateHistory = true) {
-  // Hide all sections
-  document.querySelectorAll(".view-section").forEach((el) => {
+function showDashboard() {
+  document.getElementById("landingPage").style.display = "none";
+  document.getElementById("loginPage").style.display = "none";
+  document.getElementById("dashboard").style.display = "block";
+
+  document.getElementById("welcomeMessage").innerText = `Welcome back, ${currentStudent.name.split(" ")[0]}!`;
+  document.getElementById("userName").innerText = currentStudent.name;
+  document.getElementById("userIdDisplay").innerText = "ID: " + currentStudent.student_id;
+
+  const avatarUrl = currentStudent.avatar || `https://ui-avatars.com/api/?name=${currentStudent.name}&background=4F46E5&color=fff`;
+  document.getElementById("userAvatar").innerHTML = `<img src="${avatarUrl}" alt="Profile" style="width:100%; height:100%; object-fit:cover; display:block;">`;
+
+  const currentHash = location.hash.replace("#", "") || "home";
+  const navBtn = document.querySelector(`.nav-btn[data-view="${currentHash}"]`);
+  switchView(currentHash, navBtn, false);
+
+  loadHomeData();
+  loadAnnouncements();
+}
+
+function switchView(viewName, btn, pushState = true) {
+  document.querySelectorAll(".view-section").forEach(el => {
     el.classList.remove("active");
     el.style.display = "none";
   });
-  // Deactivate all sidebar buttons
-  document.querySelectorAll(".nav-btn").forEach((el) => el.classList.remove("active"));
 
-  // Show target
-  const targetView = document.getElementById(`view-${viewName}`);
-  if (targetView) {
-    targetView.style.display = "block";
-    setTimeout(() => targetView.classList.add("active"), 10);
+  document.querySelectorAll(".nav-btn").forEach(el => el.classList.remove("active"));
+
+  const target = document.getElementById("view-" + viewName);
+  if (target) {
+    target.style.display = "block";
+    setTimeout(() => target.classList.add("active"), 10);
   }
 
-  // Activate button if exists
   if (btn) btn.classList.add("active");
+  if (pushState) history.pushState({ view: viewName }, "", "#" + viewName);
 
-  if (updateHistory) history.pushState({ view: viewName }, "", `#${viewName}`);
-  
   if (pollingInterval) clearInterval(pollingInterval);
 
-  // Load Data
   if (viewName === "profile") loadProfile();
   if (viewName === "schedule") loadSchedule();
   if (viewName === "grades") loadGrades();
@@ -272,500 +176,462 @@ function switchView(viewName, btn, updateHistory = true) {
   }
 }
 
-// --- PROFILE LOGIC ---
-async function loadProfile() {
-  try {
-    const res = await fetch(`${API_URL}/students/${currentStudent.dbId}`);
-    const student = await res.json();
+// =========================================================
+// DATA LOADERS
+// =========================================================
 
-    const gRes = await fetch(`${API_URL}/students/${currentStudent.dbId}/grades`);
-    const grades = await gRes.json();
-
-    const cgpa = calculateCGPA(grades);
-    const completedCredits = grades.reduce((sum, g) => sum + (g.credits || 3), 0);
-
-    // Profile Avatar
-    const avatarUrl = student.avatar || `https://ui-avatars.com/api/?name=${student.name}&background=4F46E5&color=fff`;
-    document.getElementById("pAvatar").innerHTML = `<img src="${avatarUrl}" style="width:100%; height:100%; object-fit:cover;">`;
-
-    document.getElementById("pName").innerText = student.name;
-    document.getElementById("pProgram").innerText = student.program || "N/A";
-    document.getElementById("pId").innerText = student.student_id;
-    document.getElementById("pDept").innerText = student.department;
-
-    document.getElementById("pUniqueId").innerText = student.unique_id || "N/A";
-    document.getElementById("pAdmitted").innerText = student.admitted_semester || "N/A";
-    document.getElementById("pCredits").innerText = completedCredits;
-    document.getElementById("pCgpa").innerText = cgpa;
-
-    document.getElementById("pDob").innerText = student.dob || "N/A";
-    document.getElementById("pBlood").innerText = student.blood_group || "N/A";
-    document.getElementById("pNid").innerText = student.nid || "N/A";
-    document.getElementById("pMarital").innerText = student.marital_status || "N/A";
-
-    document.getElementById("pEmail").innerText = student.email;
-    document.getElementById("pPhone").innerText = student.phone || "N/A";
-    document.getElementById("pPresent").innerText = student.present_address || "N/A";
-    document.getElementById("pPermanent").innerText = student.permanent_address || "N/A";
-
-    document.getElementById("pAdvisorName").innerText = student.advisor_name || "Not Assigned";
-    document.getElementById("pAdvisorEmail").innerText = student.advisor_email || "";
-  } catch (e) {
-    console.error("Profile load error:", e);
-  }
-}
-
-// --- HOME DATA ---
 async function loadHomeData() {
   try {
     const res = await fetch(`${API_URL}/students/${currentStudent.dbId}/courses`);
-    const courses = await res.json();
+    const allCourses = await res.json();
 
-    const currentCourses = courses.filter((c) => c.status === "enrolled");
-    const completedCourses = courses.filter((c) => c.status !== "enrolled" && c.status !== "dropped");
-    const droppedCourses = courses.filter((c) => c.status === "dropped" && c.semester === "Fall-2025");
+    const enrolled = allCourses.filter(c => c.status === 'enrolled');
+    const completed = allCourses.filter(c => c.completed_semester);
+    const dropped = allCourses.filter(c => c.status === 'dropped' && c.semester === 'Fall-2025');
 
-    currentEnrolledCredits = currentCourses.reduce((sum, c) => sum + (c.credits || 0), 0);
+    currentEnrolledCredits = enrolled.reduce((sum, c) => sum + (c.credits || 0), 0);
 
-    document.getElementById("coursesCount").innerHTML = 
-        `${currentCourses.length} <div style="font-size:0.6em; margin-top:5px; font-weight:normal;">(${currentEnrolledCredits} Credits)</div>`;
+    document.getElementById("coursesCount").innerHTML = `${enrolled.length} <small>(${currentEnrolledCredits} Cr)</small>`;
+    document.getElementById("creditsCount").innerText = completed.reduce((sum, c) => sum + (c.credits || 0), 0);
 
-    document.getElementById("creditsCount").innerText = completedCourses.reduce((sum, c) => sum + (c.credits || 0), 0);
-
-    const gRes = await fetch(`${API_URL}/students/${currentStudent.dbId}/grades`);
-    const grades = await gRes.json();
+    const gradesRes = await fetch(`${API_URL}/students/${currentStudent.dbId}/grades`);
+    const grades = await gradesRes.json();
     document.getElementById("gpaDisplay").innerText = calculateCGPA(grades);
-    document.getElementById("semestersCount").innerText = new Set(grades.map((g) => g.semester)).size;
+    document.getElementById("semestersCount").innerText = new Set(grades.map(g => g.semester)).size;
 
     const listContainer = document.getElementById("coursesList");
     const dropBtn = document.getElementById("dropSemesterBtn");
 
-    const isFullyDropped = currentCourses.length === 0 && droppedCourses.length > 0;
-
-    if (isFullyDropped) {
-      if (dropBtn) {
-        dropBtn.disabled = true;
-        dropBtn.style.opacity = "0.5";
-        dropBtn.style.cursor = "not-allowed";
-        dropBtn.title = "Semester already dropped";
-      }
+    if (enrolled.length === 0 && dropped.length > 0) {
+      if (dropBtn) { dropBtn.disabled = true; dropBtn.style.opacity = "0.5"; dropBtn.title = "Semester already dropped"; }
       listContainer.innerHTML = `
-            <div style="text-align:center; padding:30px; background:#fff1f2; border:1px solid #fda4af; border-radius:10px; color:#9f1239;">
-                <i class="fas fa-ban" style="font-size:2em; margin-bottom:10px;"></i>
-                <h3 style="margin:0; font-size:1.2em;">You have dropped this semester (Fall-2025)</h3>
-                <p style="margin:5px 0 0 0; font-size:0.9em;">All courses have been removed. Tuition has been refunded.</p>
-            </div>
-        `;
+                <div style="text-align:center; padding:30px; background:#fff1f2; border:1px solid #fda4af; border-radius:10px; color:#9f1239;">
+                    <i class="fas fa-ban" style="font-size:2em; margin-bottom:10px;"></i>
+                    <h3>You have dropped this semester (Fall-2025)</h3>
+                </div>`;
     } else {
-      if (dropBtn) {
-        dropBtn.disabled = false;
-        dropBtn.style.opacity = "1";
-        dropBtn.style.cursor = "pointer";
-        dropBtn.title = "Drop entire semester";
-      }
+      if (dropBtn) { dropBtn.disabled = false; dropBtn.style.opacity = "1"; }
 
-      if (currentCourses.length > 0) {
-        listContainer.innerHTML = currentCourses.map((c) => `
-                <div style="padding:15px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
-                    <div>
-                        <div style="font-weight:700; color:#374151;">${c.code} - ${c.name}</div>
-                        <div style="font-size:0.85em; color:#6b7280; margin-top:2px;">${c.schedule} • ${c.room_number}</div>
+      if (enrolled.length > 0) {
+        listContainer.innerHTML = enrolled.map(c => `
+                    <div style="padding:15px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div style="font-weight:700; color:#374151;">${c.code} - ${c.name}</div>
+                            <div style="font-size:0.85em; color:#6b7280;">${formatSchedule(c)}</div>
+                            <div style="font-size:0.8em; color:#4F46E5;">Room: ${c.room_number}</div>
+                        </div>
+                        <span style="background:#e0e7ff; color:#4338ca; padding:4px 10px; border-radius:6px; font-size:0.8em; font-weight:600;">${c.credits} Cr</span>
                     </div>
-                    <span style="background:#e0e7ff; color:#4338ca; padding:4px 10px; border-radius:6px; font-size:0.8em; font-weight:600;">${c.credits} Cr</span>
-                </div>
-            `).join("");
+                `).join("");
       } else {
-        listContainer.innerHTML = '<p style="color:#666; font-style:italic; padding:10px;">No enrolled courses for this semester.</p>';
+        listContainer.innerHTML = '<p style="color:#666; font-style:italic; padding:10px;">No enrolled courses.</p>';
       }
     }
-  } catch (error) {
-    console.error(error);
-  }
+  } catch (e) { console.error(e); }
 }
 
-// --- ADVISING (GATEKEEPER + FILTERS) ---
-window.loadAdvisingCatalog = async function() {
+async function loadProfile() {
   try {
-    // 1. GATEKEEPER CHECK: Check Time Slot Access
-    const accessRes = await fetch(`${API_URL}/advising/check-access/${currentStudent.dbId}`);
-    const accessData = await accessRes.json();
+    const res = await fetch(`${API_URL}/students/${currentStudent.dbId}`);
+    const s = await res.json();
 
-    const container = document.getElementById("advisingCatalog");
-    
-    // If blocked, show message and stop
-    if (!accessData.allowed) {
-        if (container) {
-            container.innerHTML = `
-                <div style="text-align:center; padding:50px; background:#fff1f2; border:1px solid #fda4af; border-radius:10px;">
-                    <i class="fas fa-clock" style="font-size:3em; color:#e11d48; margin-bottom:20px;"></i>
-                    <h2 style="color:#9f1239; margin-bottom:10px;">Advising Locked</h2>
-                    <p style="font-size:1.1em; color:#881337; white-space:pre-line;">${accessData.message}</p>
-                </div>
-            `;
-            const confirmBtn = document.getElementById("confirmSlipBtn");
-            if(confirmBtn) confirmBtn.disabled = true;
-        }
-        return; 
-    } else {
-        const confirmBtn = document.getElementById("confirmSlipBtn");
-        if(confirmBtn) confirmBtn.disabled = false;
-    }
+    document.getElementById("pName").innerText = s.name;
+    document.getElementById("pProgram").innerText = s.program || "N/A";
+    document.getElementById("pDept").innerText = s.department;
+    document.getElementById("pId").innerText = s.student_id;
+    document.getElementById("pUniqueId").innerText = s.unique_id || "N/A";
+    document.getElementById("pAdmitted").innerText = s.admitted_semester || "N/A";
+    document.getElementById("pDob").innerText = s.dob || "N/A";
+    document.getElementById("pBlood").innerText = s.blood_group || "N/A";
+    document.getElementById("pNid").innerText = s.nid || "N/A";
+    document.getElementById("pMarital").innerText = s.marital_status || "N/A";
+    document.getElementById("pEmail").innerText = s.email;
+    document.getElementById("pPhone").innerText = s.phone || "N/A";
+    document.getElementById("pPresent").innerText = s.present_address || "N/A";
+    document.getElementById("pPermanent").innerText = s.permanent_address || "N/A";
+    document.getElementById("pAdvisorName").innerText = s.advisor_name || "Not Assigned";
+    document.getElementById("pAdvisorEmail").innerText = s.advisor_email || "";
 
-    // 2. GET FILTERS from Dropdowns
-    const dept = document.getElementById("advDeptFilter").value;
-    const sem = document.getElementById("advSemFilter").value;
+    const gradesRes = await fetch(`${API_URL}/students/${currentStudent.dbId}/grades`);
+    const grades = await gradesRes.json();
+    const creditsDone = grades.reduce((sum, g) => sum + (g.credits || 0), 0);
 
-    // 3. FETCH DATA (With filters)
-    const [catRes, myRes] = await Promise.all([
-      fetch(`${API_URL}/advising/courses?dept=${dept}&semester=${sem}`),
-      fetch(`${API_URL}/students/${currentStudent.dbId}/courses`),
-    ]);
+    document.getElementById("pCredits").innerText = creditsDone;
+    document.getElementById("pCgpa").innerText = calculateCGPA(grades);
 
-    const allCatalog = await catRes.json();
-    const myHistory = await myRes.json();
+  } catch (e) { console.error("Profile load error:", e); }
+}
 
-    const enrolledCurrent = myHistory.filter((c) => c.status === "enrolled" && c.semester === "Fall-2025");
-    const droppedCurrent = myHistory.filter((c) => c.status === "dropped" && c.semester === "Fall-2025");
-
-    const isFullyDropped = enrolledCurrent.length === 0 && droppedCurrent.length > 0;
-
-    if (isFullyDropped) {
-      if (container) {
-        container.innerHTML = `
-                <div style="text-align:center; padding:40px; color:#9f1239; background:#fff1f2; border-radius:10px; border:1px solid #fda4af;">
-                    <i class="fas fa-ban" style="font-size:3em; margin-bottom:15px;"></i>
-                    <h3 style="margin-top:0;">Advising Disabled</h3>
-                    <p>You have dropped the current semester. <br>You cannot register for new courses at this time.</p>
-                </div>
-             `;
-        const confirmBtn = document.getElementById("confirmSlipBtn");
-        if (confirmBtn) confirmBtn.disabled = true;
-      }
-      return;
-    }
-
-    const enrolledCodes = myHistory.filter((c) => c.status === "enrolled").map((c) => c.code);
-    const completedCodes = myHistory.filter((c) => c.status === "completed").map((c) => c.code);
-
-    const undoneCourses = allCatalog.filter((c) => !completedCodes.includes(c.code) && !enrolledCodes.includes(c.code));
-    const retakeCourses = allCatalog.filter((c) => completedCodes.includes(c.code) && !enrolledCodes.includes(c.code));
+async function loadSchedule() {
+  try {
+    const res = await fetch(`${API_URL}/students/${currentStudent.dbId}/courses`);
+    const allCourses = await res.json();
+    const enrolled = allCourses.filter(c => c.status === 'enrolled');
+    const history = allCourses.filter(c => c.status !== 'enrolled' && c.status !== 'dropped');
 
     let html = "";
 
-    const renderList = (list, title, badgeColor) => {
-      if (list.length === 0) return `<h4 style="margin-top:20px; color:#666;">${title}</h4><p style="font-style:italic; color:#888; margin-bottom:20px;">No courses available matching criteria.</p>`;
-
-      let sectionHtml = `<h4 style="margin-top:20px; margin-bottom:10px; color:#4F46E5; border-bottom:1px solid #eee; padding-bottom:5px;">${title}</h4>`;
-
-      sectionHtml += list.map((c) => {
-          const isFull = c.seats_available <= 0;
-          const inSlip = advisingSlip.find((s) => s.id === c.id);
-          let btnDisabled = isFull || inSlip ? "disabled" : "";
-          let btnText = inSlip ? "In Slip" : isFull ? "Full" : "Add";
-          let badgeClass = isFull ? "seat-full" : "seat-open";
-          const code = c.code;
-          const name = c.name.replace(/'/g, "\\'");
-
-          return `
-            <div class="catalog-item" style="border-left: 4px solid ${badgeColor};">
-                <div class="catalog-info">
-                    <strong>${code} ${name}</strong>
-                    <div class="catalog-meta">
-                        <span><i class="fas fa-clock"></i> ${c.schedule}</span>
-                        <span><i class="fas fa-chalkboard-teacher"></i> ${c.instructor}</span>
-                        <span><i class="fas fa-star"></i> ${c.credits} Cr</span>
+    if (enrolled.length > 0) {
+      html += `
+                <div class="semester-block">
+                    <div class="semester-header theme-fall">
+                        <h4>Fall-2025 (Current)</h4>
+                        <span class="sgpa-badge" style="background:rgba(255,255,255,0.2);">Total: ${currentEnrolledCredits} Cr</span>
                     </div>
-                </div>
-                <div style="text-align:right;">
-                    <div style="margin-bottom:5px;"><span class="seat-badge ${badgeClass}">${c.seats_available} Seats</span></div>
-                    <button class="add-btn" onclick="addToSlip(${c.id}, '${code}', '${name}', ${c.credits})" ${btnDisabled}>${btnText}</button>
-                </div>
-            </div>`;
-        }).join("");
-      return sectionHtml;
-    };
-
-    html += renderList(undoneCourses, "Regular Courses", "#4F46E5");
-    
-    if(retakeCourses.length > 0) {
-        html += renderList(retakeCourses, "Retake Courses (Completed)", "#F59E0B");
+                    <table>
+                        <thead><tr><th>Code</th><th>Name</th><th>Credits</th><th>Schedule</th><th>Room</th><th>Action</th></tr></thead>
+                        <tbody>
+                        ${enrolled.map(c => `
+                            <tr>
+                                <td>${c.code}</td>
+                                <td>${c.name}</td>
+                                <td>${c.credits}</td>
+                                <td>${formatSchedule(c)}</td>
+                                <td>${c.room_number}</td>
+                                <td><button class="remove-btn" onclick="dropCourse(${c.id})"><i class="fas fa-minus-circle"></i></button></td>
+                            </tr>
+                        `).join('')}
+                        </tbody>
+                    </table>
+                </div>`;
+    } else {
+      html += '<div class="card"><p>No active courses this semester.</p></div>';
     }
 
+    if (history.length > 0) {
+      html += '<h3 style="margin:30px 0 10px 0; color:#6b7280; border-bottom:1px solid #eee; padding-bottom:10px;">Course History</h3>';
+      const grouped = {};
+      history.forEach(c => {
+        const sem = c.completed_semester || c.semester || "Unknown";
+        if (!grouped[sem]) grouped[sem] = [];
+        grouped[sem].push(c);
+      });
+
+      Object.keys(grouped).forEach(sem => {
+        html += `
+                <div class="semester-block">
+                    <div class="semester-header theme-default"><h4>${sem}</h4></div>
+                    <table>
+                        <thead><tr><th>Code</th><th>Name</th><th>Cr</th><th>Instructor</th></tr></thead>
+                        <tbody>
+                        ${grouped[sem].map(c => `
+                            <tr><td>${c.code}</td><td>${c.name}</td><td>${c.credits}</td><td>${c.instructor}</td></tr>
+                        `).join('')}
+                        </tbody>
+                    </table>
+                </div>`;
+      });
+    }
+    document.getElementById("scheduleTableContainer").innerHTML = html;
+  } catch (e) { console.error(e); }
+}
+
+async function loadGrades() {
+  const container = document.getElementById("gradesContainer");
+  container.innerHTML = "Loading...";
+
+  try {
+    const res = await fetch(`${API_URL}/students/${currentStudent.dbId}/grades`);
+    const grades = await res.json();
+
+    if (grades.length === 0) { container.innerHTML = "<p>No grades published yet.</p>"; return; }
+
+    const grouped = {};
+    grades.forEach(g => {
+      if (!grouped[g.semester]) grouped[g.semester] = [];
+      grouped[g.semester].push(g);
+    });
+
+    let html = "";
+    Object.keys(grouped).forEach(sem => {
+      const semGrades = grouped[sem];
+      let totalPoints = 0, totalCr = 0;
+      const rows = semGrades.map(g => {
+        totalPoints += (g.point * g.credits);
+        totalCr += g.credits;
+        let gradeClass = g.grade.startsWith('A') ? 'grade-A' : (g.grade.startsWith('B') ? 'grade-B' : 'grade-C');
+        if (g.grade === 'F') gradeClass = 'grade-F';
+
+        return `<tr><td>${g.code}</td><td>${g.course_name}</td><td>${g.credits}</td><td>${g.marks || '-'}</td><td><span class="grade-pill ${gradeClass}">${g.grade}</span></td><td><b>${g.point.toFixed(2)}</b></td></tr>`;
+      }).join("");
+
+      const sgpa = totalCr ? (totalPoints / totalCr).toFixed(2) : "0.00";
+      html += `<div class="semester-block"><div class="semester-header theme-default"><h4>${sem}</h4><span class="sgpa-badge">SGPA: ${sgpa}</span></div><table><thead><tr><th>Code</th><th>Course</th><th>Cr</th><th>Marks</th><th>Grade</th><th>Point</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    });
+    document.getElementById("totalCgpaBadge").innerText = "CGPA: " + calculateCGPA(grades);
     container.innerHTML = html;
-  } catch (error) {
-    console.error("Advising error:", error);
+  } catch (e) { console.error(e); }
+}
+
+async function loadFinancials() {
+  const container = document.getElementById("financialsContainer");
+  container.innerHTML = "Loading...";
+
+  try {
+    const res = await fetch(`${API_URL}/students/${currentStudent.dbId}/financials`);
+    const data = await res.json();
+
+    const isPaid = data.status === 'Paid';
+    const statusColor = isPaid ? 'green' : (data.status === 'Refunded' ? 'gray' : '#dc2626');
+    const bg = isPaid ? '#f0fdf4' : '#fff7ed';
+
+    container.innerHTML = `
+        <div style="background:${bg}; border-radius:12px; padding:25px; border:1px solid ${isPaid ? '#bbf7d0' : '#fed7aa'}">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(0,0,0,0.1); padding-bottom:15px; margin-bottom:15px;">
+                <div><h2 style="margin:0; color:#374151;">Financial Overview</h2><p style="margin:0; color:#6b7280; font-size:0.9em;">Semester: Fall-2025</p></div>
+                <div style="text-align:right;"><span style="display:inline-block; padding:5px 12px; background:${statusColor}; color:white; border-radius:20px; font-weight:bold; font-size:0.9em;">${data.status}</span><div style="margin-top:5px; font-size:0.8em; color:#666;">Due: ${data.dueDate}</div></div>
+            </div>
+            <table style="width:100%; font-size:0.95em;">
+                <tr><td style="padding:8px 0; color:#4b5563;">Previous Dues:</td><td style="padding:8px 0; text-align:right; font-weight:bold;">$${data.previous_due}</td></tr>
+                <tr><td style="padding:8px 0; color:#4b5563;">Current Tuition (${data.credits} Cr):</td><td style="padding:8px 0; text-align:right; font-weight:bold;">$${data.current_charges}</td></tr>
+                <tr style="border-top:2px solid rgba(0,0,0,0.1);"><td style="padding:15px 0; font-size:1.1em; font-weight:bold;">Total Payable:</td><td style="padding:15px 0; text-align:right; font-size:1.4em; font-weight:900; color:#1f2937;">$${data.total_payable}</td></tr>
+            </table>
+        </div>`;
+  } catch (e) { container.innerHTML = "Error loading financials."; }
+}
+
+async function loadAdvisingCatalog() {
+  try {
+    const gateRes = await fetch(`${API_URL}/advising/check-access/${currentStudent.dbId}`);
+    const gateData = await gateRes.json();
+    const catalogDiv = document.getElementById("advisingCatalog");
+
+    if (!gateData.allowed) {
+      catalogDiv.innerHTML = `<div style="text-align:center; padding:40px; background:#fff1f2; border:1px solid #fda4af; border-radius:10px;"><i class="fas fa-lock" style="font-size:2em; color:#e11d48; margin-bottom:15px;"></i><h3 style="color:#9f1239;">Advising Locked</h3><p>${gateData.message}</p></div>`;
+      document.getElementById("confirmSlipBtn").disabled = true;
+      return;
+    }
+
+    document.getElementById("confirmSlipBtn").disabled = false;
+    const dept = document.getElementById("advDeptFilter").value;
+    const sem = document.getElementById("advSemFilter").value;
+
+    const [catRes, myRes] = await Promise.all([
+      fetch(`${API_URL}/advising/courses?dept=${dept}&semester=${sem}`),
+      fetch(`${API_URL}/students/${currentStudent.dbId}/courses`)
+    ]);
+
+    const catalog = await catRes.json();
+    const myCourses = await myRes.json();
+    const enrolledCodes = myCourses.filter(c => c.status === 'enrolled').map(c => c.code);
+    const available = catalog.filter(c => !enrolledCodes.includes(c.code));
+
+    let html = "";
+    if (available.length === 0) {
+      html = "<p style='text-align:center; padding:20px;'>No courses available.</p>";
+    } else {
+      html = available.map(c => {
+        const isFull = c.seats_available <= 0;
+        const inSlip = advisingSlip.find(s => s.id === c.id);
+        let btnState = "", btnText = "Add", seatClass = "seat-open";
+        if (inSlip) { btnState = "disabled"; btnText = "In Slip"; }
+        else if (isFull) { btnState = "disabled"; btnText = "Full"; seatClass = "seat-full"; }
+
+        return `
+                <div class="catalog-item">
+                    <div class="catalog-info">
+                        <strong>${c.code} ${c.name}</strong>
+                        <div class="catalog-meta">
+                            <span><i class="fas fa-clock"></i> ${formatSchedule(c)}</span>
+                            <span><i class="fas fa-user"></i> ${c.instructor}</span>
+                            <span><i class="fas fa-star"></i> ${c.credits} Cr</span>
+                        </div>
+                    </div>
+                    <div style="text-align:right;">
+                        <span class="seat-badge ${seatClass}">${c.seats_available} Seats</span>
+                        <div style="margin-top:5px;"><button class="add-btn" onclick="addToSlip(${c.id}, '${c.code}', '${c.name.replace(/'/g, "\\'")}', ${c.credits})" ${btnState}><i class="fas fa-plus"></i> ${btnText}</button></div>
+                    </div>
+                </div>`;
+      }).join("");
+    }
+    catalogDiv.innerHTML = html;
+  } catch (e) { console.error(e); }
+}
+
+function formatSchedule(c) {
+  let s = `${c.theory_days} ${c.theory_time}`;
+  if (c.lab_day) s += ` <br><span style="font-size:0.9em; color:#d97706;">Lab: ${c.lab_day} ${c.lab_time}</span>`;
+  return s;
+}
+
+function calculateCGPA(grades) {
+  let totalPts = 0, totalCr = 0;
+  grades.forEach(g => {
+    const pts = (typeof g.point === 'number') ? g.point : 0;
+    totalPts += (pts * g.credits);
+    totalCr += g.credits;
+  });
+  return totalCr ? (totalPts / totalCr).toFixed(2) : "0.00";
+}
+
+// SLIP ACTIONS
+async function addToSlip(id, code, name, credits) {
+  // 1. Basic Client Checks (Instant feedback)
+  if (advisingSlip.find(s => s.id === id)) return;
+
+  const slipCredits = advisingSlip.reduce((sum, s) => sum + s.credits, 0);
+  if (currentEnrolledCredits + slipCredits + credits > 15) {
+    return alert("Credit Limit Exceeded! Max 15 credits.");
+  }
+
+  // 2. Prepare Data for Server
+  const slipIds = advisingSlip.map(s => s.id);
+
+  // 3. Server Validation (The "Pre-Check")
+  try {
+    const res = await fetch(`${API_URL}/advising/validate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        studentId: currentStudent.dbId,
+        courseId: id,
+        slipIds: slipIds
+      })
+    });
+
+    const data = await res.json();
+
+    // 4. Handle Result
+    if (!data.success) {
+      // STOP! Show the conflict error immediately
+      alert("🚫 Cannot Add Course:\n\n" + data.error);
+      return;
+    }
+
+    // 5. Success! Add to Slip visually
+    advisingSlip.push({ id, code, name, credits });
+    renderSlip();
+    loadAdvisingCatalog(); // Update button states
+
+  } catch (e) {
+    console.error(e);
+    alert("Server validation failed. Please try again.");
   }
 }
 
-window.addToSlip = function(id, code, name, credits) {
-  if (advisingSlip.find((c) => c.id === id)) return;
-  const slipCredits = advisingSlip.reduce((sum, c) => sum + c.credits, 0);
-  const totalProjected = currentEnrolledCredits + slipCredits + credits;
-
-  if (totalProjected > 15) {
-    alert(`Credit Limit Exceeded!\n\nMaximum allowed is 15 credits per semester.`);
-    return;
-  }
-  advisingSlip.push({ id, code, name, credits });
-  renderSlip();
-  loadAdvisingCatalog();
-}
-
-window.removeFromSlip = function(id) {
-  advisingSlip = advisingSlip.filter((c) => c.id !== id);
+function removeFromSlip(id) {
+  advisingSlip = advisingSlip.filter(s => s.id !== id);
   renderSlip();
   loadAdvisingCatalog();
 }
 
 function renderSlip() {
   const list = document.getElementById("advisingSlipList");
-  if (!list) return;
-
-  const totalCredits = advisingSlip.reduce((sum, c) => sum + c.credits, 0);
-  const projectedTotal = currentEnrolledCredits + totalCredits;
-
   const totalEl = document.getElementById("slipTotalCredits");
-  if(totalEl) totalEl.innerHTML = `${totalCredits} <small style="color:#666; font-weight:normal; font-size:0.8em;">(New Total: ${projectedTotal})</small>`;
-
-  if (advisingSlip.length === 0) {
-    list.innerHTML = '<div class="empty-state"><i class="fas fa-shopping-basket"></i><p>Slip is empty.</p></div>';
-    return;
-  }
-
-  list.innerHTML = advisingSlip.map((c) => `
-        <div class="slip-item">
-            <div><strong>${c.code}</strong> <small>(${c.credits} Cr)</small><br><small>${c.name}</small></div>
-            <button class="remove-btn" onclick="removeFromSlip(${c.id})"><i class="fas fa-times"></i></button>
-        </div>
-    `).join("");
+  if (advisingSlip.length === 0) { list.innerHTML = '<div class="empty-state"><p>Slip is empty.</p></div>'; totalEl.innerText = "0"; return; }
+  const total = advisingSlip.reduce((sum, s) => sum + s.credits, 0);
+  totalEl.innerText = total;
+  list.innerHTML = advisingSlip.map(s => `<div class="slip-item"><div><strong>${s.code}</strong> (${s.credits} Cr)</div><button class="remove-btn" onclick="removeFromSlip(${s.id})"><i class="fas fa-times"></i></button></div>`).join("");
 }
 
 async function confirmAdvisingSlip() {
-  if (advisingSlip.length === 0) return alert("Advising slip is empty.");
-  const slipCredits = advisingSlip.reduce((sum, c) => sum + c.credits, 0);
-  const totalProjected = currentEnrolledCredits + slipCredits;
-
-  if (totalProjected < 9) {
-    alert(`Registration Failed: Minimum Credit Requirement Not Met.\n\nYou must take at least 9 credits.`);
-    return;
-  }
-
-  const courseIds = advisingSlip.map((c) => c.id);
-
+  if (advisingSlip.length === 0) return alert("Slip is empty.");
+  const courseIds = advisingSlip.map(s => s.id);
   try {
-    const res = await fetch(`${API_URL}/advising/confirm`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ studentId: currentStudent.dbId, courseIds }),
-    });
+    const res = await fetch(`${API_URL}/advising/confirm`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ studentId: currentStudent.dbId, courseIds }) });
     const data = await res.json();
-
     if (data.success) {
-      alert("Registration Successful! Please proceed to payment.");
+      alert("✅ Enrolled Successfully!");
       advisingSlip = [];
       renderSlip();
       loadHomeData();
       loadAdvisingCatalog();
-      const finBtn = document.querySelector('.nav-btn[data-view="financials"]');
-      if (finBtn) switchView("financials", finBtn);
-    } else {
-      alert("Error: " + data.message);
-    }
-  } catch (e) {
-    alert("Registration failed.");
-  }
-}
-
-// --- SCHEDULE ---
-async function loadSchedule() {
-  try {
-    const res = await fetch(`${API_URL}/students/${currentStudent.dbId}/courses`);
-    const courses = await res.json();
-    const current = courses.filter((c) => c.status === "enrolled");
-    const history = courses.filter((c) => c.status !== "enrolled");
-    const currentCredits = current.reduce((sum, c) => sum + (c.credits || 0), 0);
-
-    let html = "";
-
-    if (current.length > 0) {
-      const currentSem = current[0].semester || "Fall-2025 (Current)";
-      let themeClass = "theme-default";
-      if (currentSem.includes("Spring")) themeClass = "theme-spring";
-      if (currentSem.includes("Summer")) themeClass = "theme-summer";
-      if (currentSem.includes("Fall")) themeClass = "theme-fall";
-
-      html += `
-        <div class="semester-block">
-            <div class="semester-header ${themeClass}">
-                <h4>${currentSem}</h4>
-                <span class="sgpa-badge" style="background:rgba(255,255,255,0.2);">Current: ${currentCredits} Credits</span>
-            </div>
-            <table>
-                <thead><tr><th>Code</th><th>Name</th><th>Credits</th><th>Time</th><th>Room</th><th>Instructor</th><th>Action</th></tr></thead>
-                <tbody>
-      `;
-      current.forEach((c) => {
-        html += `<tr>
-            <td>${c.code}</td><td>${c.name}</td><td>${c.credits}</td><td>${c.schedule}</td><td>${c.room_number}</td><td>${c.instructor}</td>
-            <td><button class="remove-btn" onclick="dropCourse(${c.id})" title="Drop"><i class="fas fa-minus-circle"></i></button></td>
-        </tr>`;
-      });
-      html += `</tbody></table></div>`;
-    } else {
-      html += `<div class="card"><p>No active courses.</p></div>`;
-    }
-
-    if (history.length > 0) {
-      html += `<h3 style="margin: 40px 0 20px 0; color:#6b7280; font-size:1.1em; border-bottom:2px solid #eee; padding-bottom:10px;">Class History</h3>`;
-      const historyBySem = {};
-      history.forEach((c) => {
-        const sem = c.completed_semester || c.semester || "Unknown";
-        if (!historyBySem[sem]) historyBySem[sem] = [];
-        historyBySem[sem].push(c);
-      });
-
-      Object.keys(historyBySem).forEach((sem) => {
-        let themeClass = "theme-default";
-        if (sem.includes("Spring")) themeClass = "theme-spring";
-        if (sem.includes("Summer")) themeClass = "theme-summer";
-        if (sem.includes("Fall")) themeClass = "theme-fall";
-
-        html += `<div class="semester-block"><div class="semester-header ${themeClass}"><h4>${sem}</h4></div><table><thead><tr><th>Code</th><th>Name</th><th>Credits</th><th>Instructor</th><th>Email</th></tr></thead><tbody>`;
-        historyBySem[sem].forEach((c) => {
-          html += `<tr><td>${c.code}</td><td>${c.name}</td><td>${c.credits}</td><td>${c.instructor}</td><td><small>${c.instructor_email}</small></td></tr>`;
-        });
-        html += `</tbody></table></div>`;
-      });
-    }
-    document.getElementById("scheduleTableContainer").innerHTML = html;
-  } catch (error) {
-    console.error(error);
-  }
+      switchView('schedule', document.querySelector('.nav-btn[data-view="schedule"]'));
+    } else { alert("❌ Failed: " + data.message); }
+  } catch (e) { alert("Server connection failed."); }
 }
 
 async function dropCourse(courseId) {
-  const confirmation = prompt("SECURITY CHECK:\n\nTo confirm dropping this course, type 'DROP' below.\n\nWarning: This action is irreversible and fees may apply.");
-  if (confirmation !== "DROP") {
-    alert("Drop cancelled.");
-    return;
-  }
+  if (!confirm("Are you sure you want to DROP this course?")) return;
   try {
-    const res = await fetch(`${API_URL}/students/drop-course`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ studentId: currentStudent.dbId, courseId: courseId }),
-    });
+    const res = await fetch(`${API_URL}/students/drop-course`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ studentId: currentStudent.dbId, courseId }) });
     const data = await res.json();
-    if (data.success) {
-      alert("Course Dropped Successfully.");
-      loadSchedule();
-      loadHomeData();
-    } else {
-      alert("Drop Failed: " + data.error);
-    }
-  } catch (e) {
-    alert("Drop failed. Server error.");
-  }
+    if (data.success) { alert("Course Dropped."); loadHomeData(); loadSchedule(); } else { alert(data.error); }
+  } catch (e) { alert("Error"); }
 }
 
-// --- GRADES ---
-async function loadGrades() {
-  const container = document.getElementById("gradesContainer");
-  container.innerHTML = "Loading...";
-  try {
-    const res = await fetch(`${API_URL}/students/${currentStudent.dbId}/grades`);
-    const grades = await res.json();
-    if (grades.length === 0) {
-      container.innerHTML = "No grades.";
-      return;
-    }
-
-    const semesters = {};
-    grades.forEach((g) => {
-      if (!semesters[g.semester]) semesters[g.semester] = [];
-      semesters[g.semester].push(g);
-    });
-
-    let html = "";
-    Object.keys(semesters).forEach((sem) => {
-      let semPts = 0, semCreds = 0;
-      let rows = semesters[sem].map((g) => {
-          const pts = getPoints(g.grade);
-          const cr = g.credits || 3;
-          semPts += pts * cr;
-          semCreds += cr;
-          let gradeClass = g.grade.startsWith("A") ? "grade-A" : g.grade.startsWith("B") ? "grade-B" : "grade-C";
-          return `<tr><td>${g.code}</td><td>${g.course_name}</td><td>${cr}</td><td><span class="grade-pill ${gradeClass}">${g.grade}</span></td><td>${pts.toFixed(2)}</td></tr>`;
-        }).join("");
-
-      const sgpa = semCreds ? (semPts / semCreds).toFixed(2) : "0.00";
-      let themeClass = sem.includes("Spring") ? "theme-spring" : sem.includes("Summer") ? "theme-summer" : "theme-fall";
-      html += `<div class="semester-block"><div class="semester-header ${themeClass}"><h4>${sem}</h4><span class="sgpa-badge">SGPA: ${sgpa}</span></div><table><thead><tr><th>Code</th><th>Course</th><th>Cr</th><th>Grade</th><th>Pts</th></tr></thead><tbody>${rows}</tbody></table></div>`;
-    });
-    document.getElementById("totalCgpaBadge").innerText = "CGPA: " + calculateCGPA(grades);
-    container.innerHTML = html;
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-function getPoints(g) {
-  const m = { A: 4.0, "A-": 3.7, "B+": 3.3, B: 3.0, "B-": 2.7, "C+": 2.3, C: 2.0, D: 1.0, F: 0.0 };
-  return m[g] || 0.0;
-}
-function calculateCGPA(grades) {
-  let pts = 0, crs = 0;
-  grades.forEach((g) => {
-    let c = g.credits || 3;
-    pts += getPoints(g.grade) * c;
-    crs += c;
-  });
-  return crs ? (pts / crs).toFixed(2) : "0.00";
-}
-
-// --- FINANCIALS ---
-async function loadFinancials() {
-  const res = await fetch(`${API_URL}/students/${currentStudent.dbId}/financials`);
-  const d = await res.json();
-  const courseRes = await fetch(`${API_URL}/students/${currentStudent.dbId}/courses`);
-  const courses = await courseRes.json();
-  const droppedCurrent = courses.filter((c) => c.status === "dropped" && c.semester === "Fall-2025");
-  const enrolledCurrent = courses.filter((c) => c.status === "enrolled");
-
-  let amount = d.total;
-  let status = d.status;
-
-  if (enrolledCurrent.length === 0 && droppedCurrent.length > 0) {
-    amount = 0;
-    status = "Refunded";
-  }
-
-  document.getElementById("financialsContainer").innerHTML = `<div style="background:#f0fdf4; padding:30px; text-align:center; border-radius:16px; border:1px solid #bbf7d0;"><h2 style="color:#166534; font-size:2.5em; margin:10px 0;">$${amount}</h2><p style="color:#15803d; font-weight:bold;">Status: ${status}</p><p style="color:#666;">Due Date: ${d.dueDate}</p></div>`;
-}
-
-// --- DROP SEMESTER ---
 async function dropSemester() {
-  const confirmation = prompt("SECURITY CHECK:\n\nTo confirm dropping the ENTIRE SEMESTER, type 'DROP' below.\n\nThis will remove ALL enrolled courses.");
-  if (confirmation !== "DROP") {
-    alert("Drop cancelled.");
-    return;
-  }
-  await fetch(`${API_URL}/students/drop-semester`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ studentId: currentStudent.dbId }),
-  });
-  alert("Semester Dropped.");
-  loadHomeData();
-  loadSchedule();
-  switchView("home", document.querySelector('.nav-btn[data-view="home"]'));
+  if (!confirm("WARNING: Drop ENTIRE Semester? This removes ALL courses.")) return;
+  try {
+    await fetch(`${API_URL}/students/drop-semester`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ studentId: currentStudent.dbId }) });
+    alert("Semester Dropped."); loadHomeData(); loadSchedule();
+  } catch (e) { alert("Error"); }
 }
 
-// --- ANNOUNCEMENTS ---
 async function loadAnnouncements() {
-  const res = await fetch(`${API_URL}/announcements`);
+  const res = await fetch(API_URL + "/announcements");
   const data = await res.json();
-  document.getElementById("announcementsList").innerHTML = data.map((a) =>
-        `<div style="padding:15px; border-bottom:1px solid #f3f4f6;"><div style="font-weight:700; color:#374151; margin-bottom:4px;">${a.title}</div><div style="font-size:0.9em; color:#6b7280; line-height:1.4;">${a.content}</div></div>`
-    ).join("");
+  document.getElementById("announcementsList").innerHTML = data.map(e => `<div style="padding:15px; border-bottom:1px solid #f3f4f6;"><div style="font-weight:700; color:#374151; margin-bottom:4px;">${e.title}</div><div style="font-size:0.9em; color:#6b7280; line-height:1.4;">${e.content}</div></div>`).join("");
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+  // 1. Auth Check
+  checkAuth();
+
+  // 2. Login Form Listener
+  const loginForm = document.getElementById("loginForm");
+  if (loginForm) loginForm.addEventListener("submit", handleLogin);
+
+  // 3. Global Button Listeners
+  const logoutBtn = document.getElementById("logoutBtn");
+  if (logoutBtn) logoutBtn.addEventListener("click", logout);
+
+  const dropBtn = document.getElementById("dropSemesterBtn");
+  if (dropBtn) dropBtn.addEventListener("click", dropSemester);
+
+  const confirmSlipBtn = document.getElementById("confirmSlipBtn");
+  if (confirmSlipBtn) confirmSlipBtn.addEventListener("click", confirmAdvisingSlip);
+
+  // 4. Navigation Menu Buttons
+  document.querySelectorAll(".nav-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      // Prevent default anchor behavior if any
+      e.preventDefault();
+      const view = btn.getAttribute("data-view");
+      if (view) switchView(view, btn, true); // true = add to history
+    });
+  });
+
+  // 5. FIX: Dashboard Cards (Click to Navigate)
+  document.querySelectorAll(".stat-card").forEach(card => {
+    card.addEventListener("click", () => {
+      const targetView = card.getAttribute("data-target");
+      if (targetView) {
+        // Find the corresponding nav button to highlight it
+        const navBtn = document.querySelector(`.nav-btn[data-view="${targetView}"]`);
+        switchView(targetView, navBtn, true);
+      }
+    });
+  });
+
+  // 6. FIX: Browser Back/Forward Button
+  window.addEventListener("popstate", (event) => {
+    if (event.state && event.state.view) {
+      // Switch view BUT do not push state (false)
+      // We pass null for the button because we don't need to re-click it, just highlight it
+      const navBtn = document.querySelector(`.nav-btn[data-view="${event.state.view}"]`);
+      switchView(event.state.view, navBtn, false);
+    } else {
+      // Default to home if no state exists
+      if (currentStudent) {
+        switchView("home", document.querySelector(`.nav-btn[data-view="home"]`), false);
+      } else {
+        showLanding();
+      }
+    }
+  });
+
+  // 7. Logo Click -> Home
+  const logo = document.getElementById("navLogo");
+  if (logo) {
+    logo.addEventListener("click", () => {
+      const homeBtn = document.querySelector(`.nav-btn[data-view="home"]`);
+      switchView("home", homeBtn, true);
+    });
+  }
+
+  // 8. Landing Page Helper (If refreshed on landing)
+  if (!localStorage.getItem("san_student")) {
+    showLanding();
+  }
+});
