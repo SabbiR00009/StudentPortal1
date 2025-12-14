@@ -11,12 +11,9 @@
 <body class="admin-theme">
 
     <div class="dashboard" id="dashboard" style="display:block;">
+        <!-- ADMIN NAVBAR -->
         <div class="navbar">
-            <div class="logo-container" id="adminNavLogo">
-                <img src="/public/logo.png" alt="SAN Logo" class="navbar-logo">
-                <h1><i class="fas fa-user-shield"></i> SAN Admin</h1>
-            </div>
-
+            <h1><i class="fas fa-user-shield"></i> SAN Admin</h1>
             <div class="user-info">
                 <div class="user-avatar">A</div>
                 <div style="display:flex; flex-direction:column; text-align:right;">
@@ -29,8 +26,10 @@
 
         <div class="dashboard-content">
             
+            <!-- LEFT: CONTENT -->
             <div class="main-panel">
                 
+                <!-- 1. OVERVIEW -->
                 <div id="view-overview" class="view-section active">
                     <div class="welcome-section">
                         <h2>Admin Control Center</h2>
@@ -50,25 +49,7 @@
                     </div>
                 </div>
 
-                <div id="view-profile" class="view-section">
-                    <div class="card">
-                        <h3><i class="fas fa-id-card"></i> Administrator Profile</h3>
-                        <div style="display: flex; gap: 30px; align-items: flex-start;">
-                            <div style="width: 120px; height: 120px; border-radius: 50%; overflow: hidden; border: 4px solid #fee2e2;">
-                                <img id="adminProfileImg" src="" alt="Admin" style="width:100%; height:100%; object-fit:cover;">
-                            </div>
-                            <div>
-                                <h2 id="adminProfileName" style="margin: 0; font-size: 2em; color: #1f2937;">Loading...</h2>
-                                <p id="adminProfileRole" style="color: #dc2626; font-weight: bold; margin-top: 5px;">System Administrator</p>
-                                <div style="margin-top: 20px; display: grid; gap: 10px;">
-                                    <div><strong>Email:</strong> <span id="adminProfileEmail">...</span></div>
-                                    <div><strong>Access Level:</strong> Full Control</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
+                <!-- 2. MANAGE FACULTY -->
                 <div id="view-faculty" class="view-section">
                     <div class="card">
                         <div class="card-header">
@@ -77,13 +58,14 @@
                         </div>
                         <div class="table-responsive">
                             <table id="facultyTable">
-                                <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Dept</th><th>Designation</th><th>Action</th></tr></thead>
+                                <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Dept</th><th>Action</th></tr></thead>
                                 <tbody id="facultyList"></tbody>
                             </table>
                         </div>
                     </div>
                 </div>
 
+                <!-- 3. MANAGE STUDENTS -->
                 <div id="view-students" class="view-section">
                     <div class="card">
                         <div class="card-header">
@@ -103,6 +85,7 @@
                     </div>
                 </div>
 
+                <!-- 4. MANAGE COURSES -->
                 <div id="view-courses" class="view-section">
                     <div class="card">
                         <h3><i class="fas fa-book-open"></i> Add New Course</h3>
@@ -110,17 +93,6 @@
                             <div class="form-grid">
                                 <div class="input-group"><label>Course Code</label><input type="text" id="cCode" placeholder="e.g. CSE101" required></div>
                                 <div class="input-group"><label>Course Name</label><input type="text" id="cName" placeholder="Course Name" required></div>
-                                <div class="input-group">
-                                    <label>Department</label>
-                                    <select id="cDept" required>
-                                        <option value="CSE">CSE</option>
-                                        <option value="EEE">EEE</option>
-                                        <option value="BBA">BBA</option>
-                                        <option value="ACT">ACT</option>
-                                        <option value="ENG">ENG</option>
-                                        <option value="General">General</option>
-                                    </select>
-                                </div>
                                 <div class="input-group"><label>Credits</label><input type="number" id="cCredits" placeholder="3" required></div>
                                 <div class="input-group"><label>Instructor</label><input type="text" id="cInstructor" placeholder="Instructor Name" required></div>
                                 <div class="input-group"><label>Schedule</label><input type="text" id="cTime" placeholder="e.g. MW 10:00" required></div>
@@ -129,24 +101,15 @@
                             <button type="submit" class="admin-btn primary">Create Course</button>
                         </form>
                     </div>
-
-                    <div class="card">
-                        <h3><i class="fas fa-list"></i> Course List & Seat Control</h3>
-                        <div class="table-responsive">
-                            <table id="courseTable">
-                                <thead><tr><th>Code</th><th>Name</th><th>Seats (Filled/Max)</th><th>Status</th><th>Action</th></tr></thead>
-                                <tbody id="courseList"></tbody>
-                            </table>
-                        </div>
-                    </div>
                 </div>
 
+                <!-- 5. UPLOAD GRADES -->
                 <div id="view-grades" class="view-section">
                     <div class="card">
                         <h3><i class="fas fa-file-signature"></i> Upload Student Grade</h3>
                         <form class="admin-form" id="gradeForm">
                             <div class="form-grid">
-                                <div class="input-group"><label>Student ID</label><input id="gStudentId" placeholder="e.g. 2025-3-60-001" required></div>
+                                <div class="input-group"><label>Student ID</label><input id="gStudentId" placeholder="e.g. SAN2025001" required></div>
                                 <div class="input-group"><label>Course Code</label><input id="gCourseCode" placeholder="e.g. CSE101" required></div>
                                 <div class="input-group">
                                     <label>Grade</label>
@@ -172,6 +135,7 @@
                     </div>
                 </div>
 
+                <!-- 6. FINANCIALS -->
                 <div id="view-financials" class="view-section">
                     <div class="card">
                         <h3><i class="fas fa-file-invoice-dollar"></i> Global Financial Status</h3>
@@ -179,6 +143,7 @@
                     </div>
                 </div>
 
+                <!-- 7. SEMESTERS -->
                 <div id="view-semesters" class="view-section">
                     <div class="card">
                         <h3><i class="fas fa-calendar-plus"></i> Open New Semester</h3>
@@ -192,33 +157,8 @@
                         </form>
                     </div>
                 </div>
-
-                <div id="view-slots" class="view-section">
-                    <div class="card">
-                        <h3><i class="fas fa-clock"></i> Set Advising Time Slots</h3>
-                        <p style="color:#666; margin-bottom:15px; font-size:0.9em;">Define when students can access advising based on their completed credit hours.</p>
-                        <form class="admin-form" id="addSlotForm">
-                            <div class="form-grid">
-                                <div class="input-group"><label>Min Credits</label><input type="number" id="slotMin" placeholder="e.g. 120" required></div>
-                                <div class="input-group"><label>Max Credits</label><input type="number" id="slotMax" placeholder="e.g. 140" required></div>
-                                <div class="input-group"><label>Start Time</label><input type="datetime-local" id="slotStart" required></div>
-                                <div class="input-group"><label>End Time</label><input type="datetime-local" id="slotEnd" required></div>
-                            </div>
-                            <button type="submit" class="admin-btn primary">Set Advising Window</button>
-                        </form>
-                    </div>
-
-                    <div class="card">
-                        <h3>Active Advising Windows</h3>
-                        <div class="table-responsive">
-                            <table id="slotsTable">
-                                <thead><tr><th>Credits Range</th><th>Start Time</th><th>End Time</th><th>Status</th><th>Action</th></tr></thead>
-                                <tbody id="slotsList"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
                 
+                <!-- 8. MANAGE ADMINS -->
                 <div id="view-admins" class="view-section">
                     <div class="card">
                         <h3><i class="fas fa-user-shield"></i> Add New Administrator</h3>
@@ -231,6 +171,7 @@
                     </div>
                 </div>
 
+                <!-- 9. ANNOUNCEMENTS -->
                 <div id="view-announcements" class="view-section">
                     <div class="card">
                         <h3><i class="fas fa-bullhorn"></i> Post Announcement</h3>
@@ -238,13 +179,14 @@
                             <div class="input-group"><label>Title</label><input id="aTitle" required></div>
                             <div class="input-group"><label>Content</label><textarea id="aContent" rows="3" required></textarea></div>
                             <div class="input-group"><label>Category</label><input id="aCategory" placeholder="e.g. Academic" required></div>
-                            <button type="submit" class="admin-btn primary">Post</button>
+                            <button type="submit" class="admin-btn primary">Post Announcement</button>
                         </form>
                     </div>
                 </div>
 
             </div>
 
+            <!-- RIGHT: MENU -->
             <div class="side-panel">
                 <div class="card">
                     <h3 class="menu-title">ADMIN TOOLS</h3>
@@ -254,7 +196,6 @@
                         <button class="nav-btn" onclick="switchAdminView('faculty', this)"><i class="fas fa-chalkboard-teacher"></i> Faculty</button>
                         <button class="nav-btn" onclick="switchAdminView('courses', this)"><i class="fas fa-book"></i> Courses</button>
                         <button class="nav-btn" onclick="switchAdminView('grades', this)"><i class="fas fa-pen-nib"></i> Upload Grades</button>
-                        <button class="nav-btn" onclick="switchAdminView('slots', this)"><i class="fas fa-clock"></i> Advising Slots</button>
                         <button class="nav-btn" onclick="switchAdminView('semesters', this)"><i class="fas fa-calendar-alt"></i> Semesters</button>
                         <button class="nav-btn" onclick="switchAdminView('financials', this)"><i class="fas fa-file-invoice-dollar"></i> Financials</button>
                         <button class="nav-btn" onclick="switchAdminView('announcements', this)"><i class="fas fa-bullhorn"></i> Announcements</button>
@@ -265,6 +206,7 @@
         </div>
     </div>
 
+    <!-- REGISTER STUDENT MODAL -->
     <div id="studentModal" class="modal-overlay">
         <div class="modal-card">
             <div class="modal-header">
@@ -272,46 +214,32 @@
                 <button class="close-modal" onclick="document.getElementById('studentModal').style.display='none'">&times;</button>
             </div>
             <form id="newStudentForm" class="modal-body">
+                
+                <!-- STUDENT ID INPUT (TRIGGERS EMAIL GEN) -->
+                <div class="input-group">
+                    <label>Student ID (Required)</label>
+                    <input id="nsId" placeholder="e.g. SAN2025001" required>
+                </div>
+
                 <div class="form-grid">
-                    <div class="input-group" style="grid-column: span 2;">
-                        <label>Student ID (Optional)</label>
-                        <input id="nsId" placeholder="Leave blank to auto-generate (e.g. 2025-3-60-001)" class="admin-input">
-                    </div>
-
                     <div class="input-group"><label>Full Name</label><input id="nsName" required></div>
-                    <div class="input-group"><label>Email</label><input id="nsEmail" required></div>
                     
-                    <div class="input-group">
-                        <label>Department</label>
-                        <select id="nsDept" required>
-                            <option value="CSE">CSE</option>
-                            <option value="EEE">EEE</option>
-                            <option value="BBA">BBA</option>
-                            <option value="ACT">ACT</option>
-                            <option value="ENG">ENG</option>
-                        </select>
-                    </div>
-                    <div class="input-group">
-                        <label>Admitted Year</label>
-                        <input type="number" id="nsYear" placeholder="2025" value="2025" required>
-                    </div>
-                    <div class="input-group">
-                        <label>Admitted Semester</label>
-                        <select id="nsSem" required>
-                            <option value="Spring">Spring</option>
-                            <option value="Summer">Summer</option>
-                            <option value="Fall">Fall</option>
-                        </select>
-                    </div>
-
                     <div class="input-group"><label>Phone</label><input id="nsPhone"></div>
+                    <div class="input-group"><label>Department</label><input id="nsDept" placeholder="e.g. CSE" required></div>
+                    <div class="input-group"><label>Program</label><input id="nsProgram" placeholder="e.g. B.Sc" required></div>
                 </div>
                 
                 <div class="form-section-title">Advisor Assignment</div>
                 <div class="form-grid">
-                    <div class="input-group"><label>Advisor Name</label><input id="nsAdvisor"></div>
-                    <div class="input-group"><label>Advisor Email</label><input id="nsAdvisorEmail"></div>
+                    <!-- Dropdown for Advisor -->
+                    <div class="input-group" style="grid-column: span 2;">
+                        <label>Select Faculty Advisor</label>
+                        <select id="nsAdvisorSelect" class="admin-input" required>
+                            <option value="" disabled selected>Loading Faculty...</option>
+                        </select>
+                    </div>
                 </div>
+                
                 <div class="modal-footer">
                     <button type="button" class="admin-btn secondary" onclick="document.getElementById('studentModal').style.display='none'">Cancel</button>
                     <button type="submit" class="admin-btn primary">Register Student</button>
@@ -319,38 +247,8 @@
             </form>
         </div>
     </div>
-
-    <div id="facultyModal" class="modal-overlay">
-        <div class="modal-card">
-            <div class="modal-header">
-                <h3>Add New Faculty</h3>
-                <button class="close-modal" onclick="document.getElementById('facultyModal').style.display='none'">&times;</button>
-            </div>
-            <form id="newFacultyForm" class="modal-body">
-                <div class="form-grid">
-                    <div class="input-group"><label>Faculty ID</label><input id="nfId" placeholder="e.g. F-2025-001" required></div>
-                    <div class="input-group"><label>Full Name</label><input id="nfName" required></div>
-                    <div class="input-group"><label>Email</label><input type="email" id="nfEmail" required></div>
-                    <div class="input-group"><label>Designation</label><input id="nfDesignation" placeholder="e.g. Senior Lecturer" required></div>
-                    <div class="input-group">
-                        <label>Department</label>
-                        <select id="nfDept" required>
-                            <option value="CSE">CSE</option>
-                            <option value="EEE">EEE</option>
-                            <option value="BBA">BBA</option>
-                            <option value="ACT">ACT</option>
-                            <option value="ENG">ENG</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="admin-btn secondary" onclick="document.getElementById('facultyModal').style.display='none'">Cancel</button>
-                    <button type="submit" class="admin-btn primary">Add Faculty</button>
-                </div>
-            </form>
-        </div>
-    </div>
     
+    <!-- EDIT STUDENT MODAL -->
     <div id="editStudentModal" class="modal-overlay">
         <div class="modal-card wide-modal">
             <div class="modal-header">
@@ -360,6 +258,7 @@
             <form id="editStudentForm" class="modal-body-scroll">
                 <input type="hidden" id="editStudentDbId">
                 
+                <!-- PROFILE HEADER -->
                 <div class="edit-profile-header">
                     <div class="profile-icon-placeholder"><i class="fas fa-user"></i></div>
                     <div class="profile-main-inputs">
@@ -375,6 +274,7 @@
                 </div>
 
                 <div class="edit-grid-layout">
+                    <!-- LEFT COL: ACADEMIC -->
                     <div class="edit-column">
                         <div class="form-section-title"><i class="fas fa-graduation-cap"></i> Academic Info</div>
                         <div class="input-group"><label>Department</label><input id="editDept" required></div>
@@ -385,13 +285,22 @@
                         </div>
                         
                         <div class="form-section-title"><i class="fas fa-chalkboard-teacher"></i> Advisor</div>
-                        <div class="input-group"><label>Name</label><input id="editAdvisorName"></div>
-                        <div class="input-group"><label>Email</label><input id="editAdvisorEmail"></div>
+                        <!-- Dropdown for Advisor -->
+                        <div class="input-group">
+                            <label>Assign Faculty Advisor</label>
+                            <select id="editAdvisorSelect" class="admin-input">
+                                <option value="" disabled selected>Loading Faculty...</option>
+                            </select>
+                        </div>
                     </div>
 
+                    <!-- RIGHT COL: PERSONAL -->
                     <div class="edit-column">
                         <div class="form-section-title"><i class="fas fa-address-card"></i> Personal & Contact</div>
-                        <div class="input-group"><label>Email</label><input id="editEmail" required></div>
+                        
+                        <!-- READONLY EMAIL -->
+                        <div class="input-group"><label>Email</label><input id="editEmail" readonly class="readonly-input"></div>
+                        
                         <div class="input-group"><label>Phone</label><input id="editPhone"></div>
                         <div class="form-row-compact">
                             <div class="input-group"><label>DOB</label><input id="editDob" type="date"></div>
@@ -401,12 +310,16 @@
                     </div>
                 </div>
 
+                <!-- COURSE MANAGEMENT -->
                 <div class="course-management-section">
                     <div class="form-section-title" style="color:var(--primary); border-color:var(--primary-light);">
                         <i class="fas fa-book"></i> Course Enrollment
                     </div>
                     <div class="course-actions">
-                        <input id="adminAddCourseCode" placeholder="Enter Course Code (e.g. CSE101)" class="course-input">
+                        <!-- Dropdown for Course Selection -->
+                        <div id="adminAddCourseCodeContainer" style="flex:1;">
+                            <input id="adminAddCourseCode" placeholder="Select Course..." class="course-input" style="width:100%;">
+                        </div>
                         <button type="button" class="admin-btn primary small" onclick="adminAddCourseToStudent()"> Enroll </button>
                     </div>
                     <div id="adminStudentCoursesList" class="course-list-container">

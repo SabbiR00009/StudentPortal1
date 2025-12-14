@@ -127,36 +127,32 @@ window.showLanding = function() {
 
 // [UPDATED] Show Login with strict Role context (Student, Admin, Faculty)
 window.showLogin = function(type) {
-    loginRole = type || 'student'; // Set global state
+    loginRole = type || 'student'; 
     
     document.getElementById("landingPage").style.display = "none";
     document.getElementById("loginPage").style.display = "flex";
     document.getElementById("dashboard").style.display = "none";
-    
+
     // UI Elements
     const titleEl = document.getElementById("loginTitle");
-    const labelEl = document.querySelector("#loginForm label"); 
-    const inputEl = document.getElementById("studentId"); 
+    const labelEl = document.querySelector("#loginForm label");
+    const inputEl = document.getElementById("studentId");
 
-    // Handle UI for different roles
-    if (loginRole === 'admin') {
-        titleEl.innerText = "Admin Console";
-        titleEl.style.color = "#dc2626"; // Red
-        labelEl.innerText = "Admin Email";
-        inputEl.placeholder = "e.g., admin@san.edu";
-    } else if (loginRole === 'faculty') {
-        titleEl.innerText = "Faculty Portal";
+    // Check if it is the Faculty/Admin button
+    if (loginRole === 'faculty' || loginRole === 'admin') {
+        titleEl.innerText = "Faculty & Admin Portal";
         titleEl.style.color = "#7c3aed"; // Purple
-        labelEl.innerText = "Faculty Email / ID";
-        inputEl.placeholder = "e.g., ada@san.edu";
+        labelEl.innerText = "Email or Faculty ID";
+        inputEl.placeholder = "admin@san.edu / F001";
     } else {
+        // STUDENT VIEW
         titleEl.innerText = "Student Sign In";
         titleEl.style.color = "#1e3a8a"; // Blue
         labelEl.innerText = "Student ID";
         inputEl.placeholder = "e.g., 2025-3-60-001";
     }
-    
-    // Clear previous errors/inputs
+
+    // Clear inputs
     inputEl.value = "";
     document.getElementById("password").value = "";
     document.getElementById("errorMessage").style.display = "none";

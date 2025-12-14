@@ -9,57 +9,51 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// ============= AUTHENTICATION (STRICT MODE) =============
-
+// ============= AUTHENTICATION (MERGED ADMIN & FACULTY) =============
 app.post("/api/login", (req, res) => {
-  try {
-    const { id, password, role } = req.body;
-    
-    if (!id || !password) return res.status(400).json({ error: "Required fields missing" });
+    try {
+        const { id, password, role } = req.body;
+        if (!id || !password) return res.status(400).json({ error: "Required fields missing" });
 
-    // CASE 1: ADMIN LOGIN
-    if (role === 'admin') {
-        const admin = db.prepare("SELECT * FROM admins WHERE email = ? AND password = ?").get(id, password);
-        
-        if (admin) {
-            const { password, ...d } = admin;
-            return res.json({ success: true, user: d, userType: "admin" });
-        } else {
-            return res.status(401).json({ error: "Invalid Admin credentials" });
+        // CASE 1: FACULTY / ADMIN LOGIN
+        // We handle both here so you can log in as Admin using the Faculty form
+        if (role === 'faculty' || role === 'admin') {
+            
+            // A. Check Admin Table First
+            const admin = db.prepare("SELECT * FROM admins WHERE email = ? AND password = ?").get(id, password);
+            if (admin) {
+                const { password, ...d } = admin;
+                return res.json({ success: true, user: d, userType: "admin" });
+            }
+
+            // B. Check Faculty Table Second
+            const faculty = db.prepare("SELECT * FROM faculty WHERE (faculty_id = ? OR email = ?) AND password = ?")
+                .get(id, id, password);
+            
+            if (faculty) {
+                const { password, ...d } = faculty;
+                return res.json({ success: true, user: d, userType: "faculty" });
+            }
+
+            return res.status(401).json({ error: "Invalid Credentials" });
         }
-    }
 
-    // CASE 2: STUDENT LOGIN
-    if (role === 'student') {
-        const student = db.prepare("SELECT * FROM students WHERE student_id = ? AND password = ?").get(id, password);
-
-        if (student) {
-            const { password, ...d } = student;
-            return res.json({ success: true, student: d, userType: "student" });
-        } else {
-            return res.status(401).json({ error: "Invalid Student credentials" });
+        // CASE 2: STUDENT LOGIN
+        if (role === 'student') {
+            const student = db.prepare("SELECT * FROM students WHERE student_id = ? AND password = ?").get(id, password);
+            if (student) {
+                const { password, ...d } = student;
+                return res.json({ success: true, student: d, userType: "student" });
+            } else {
+                return res.status(401).json({ error: "Invalid Student credentials" });
+            }
         }
+
+        return res.status(400).json({ error: "Invalid Login Type" });
+
+    } catch (e) {
+        res.status(500).json({ error: e.message });
     }
-
-    // CASE 3: FACULTY LOGIN (Added)
-    if (role === 'faculty') {
-        // Login via Email OR Faculty ID
-        const faculty = db.prepare("SELECT * FROM faculty WHERE (faculty_id = ? OR email = ?) AND password = ?")
-                          .get(id, id, password);
-
-        if (faculty) {
-            const { password, ...d } = faculty;
-            return res.json({ success: true, user: d, userType: "faculty" });
-        } else {
-            return res.status(401).json({ error: "Invalid Faculty credentials" });
-        }
-    }
-
-    return res.status(400).json({ error: "Invalid Login Type" });
-
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
 });
 
 // ============= ADMIN CONTROLLER ROUTES =============
