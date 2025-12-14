@@ -310,7 +310,27 @@ app.post("/api/admin/student/drop", (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+// =========================================================
+// ADMIN: MANAGE DROP SCHEDULE
+// =========================================================
+app.get("/api/admin/drop-schedule", (req, res) => {
+  try {
+    const schedule = db.prepare("SELECT * FROM drop_schedule ORDER BY id DESC LIMIT 1").get();
+    res.json(schedule || null);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
+app.post("/api/admin/drop-schedule", (req, res) => {
+  try {
+    const { semester, start, end } = req.body;
+    // Deactivate old schedules
+    db.prepare("UPDATE drop_schedule SET is_active = 0").run();
+    // Insert new one
+    db.prepare("INSERT INTO drop_schedule (semester, start_date, end_date, is_active) VALUES (?, ?, ?, 1)")
+      .run(semester, start, end);
+    res.json({ success: true, message: "Drop Schedule Updated!" });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 // ============= ADMIN: COURSE MANAGEMENT =============
 app.get("/api/admin/config/schedules", (req, res) => {
   try {
@@ -556,27 +576,66 @@ app.get("/api/students/:id/financials", (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Student Actions (Drop)
+// =========================================================
+// STUDENT: DROP COURSE (Now Locked by Schedule)
+// =========================================================
 app.post("/api/students/drop-course", (req, res) => {
   try {
+    // 1. CHECK DROP WINDOW
+    const check = isDropAllowed();
+    if (!check.allowed) {
+      return res.status(403).json({ error: check.message });
+    }
+
+    // 2. Existing Drop Logic
     const { studentId, courseId } = req.body;
-    const courses = db.prepare("SELECT c.credits FROM student_courses sc JOIN courses c ON sc.course_id = c.id WHERE sc.student_id = ? AND sc.status = 'enrolled'").all(studentId);
+
+    // Calculate remaining credits to ensure they don't go below 9
+    const courses = db.prepare(`
+            SELECT c.credits FROM student_courses sc 
+            JOIN courses c ON sc.course_id = c.id 
+            WHERE sc.student_id = ? AND sc.status = 'enrolled'
+        `).all(studentId);
+
     const totalCredits = courses.reduce((sum, c) => sum + c.credits, 0);
     const courseToDrop = db.prepare("SELECT credits FROM courses WHERE id = ?").get(courseId);
 
     if (!courseToDrop) return res.status(404).json({ error: "Course not found." });
-    if (totalCredits - courseToDrop.credits < 9) return res.status(400).json({ error: `Min 9 credits required.` });
 
+    if (totalCredits - courseToDrop.credits < 9) {
+      return res.status(400).json({ error: `Cannot Drop: You must maintain at least 9 credits.` });
+    }
+
+    // Execute Drop
     db.prepare("UPDATE student_courses SET status = 'dropped' WHERE student_id = ? AND course_id = ? AND status = 'enrolled'").run(studentId, courseId);
     db.prepare("UPDATE courses SET enrolled_count = enrolled_count - 1 WHERE id = ?").run(courseId);
+
     res.json({ success: true });
+
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get("/api/students/drop-status", (req, res) => {
+  try {
+    const status = isDropAllowed(); // Reusing your existing helper
+    res.json(status);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// =========================================================
+// STUDENT: DROP SEMESTER (Now Locked by Schedule)
+// =========================================================
 app.post("/api/students/drop-semester", (req, res) => {
   try {
+    // 1. CHECK DROP WINDOW
+    const check = isDropAllowed();
+    if (!check.allowed) {
+      return res.status(403).json({ error: check.message });
+    }
+
+    // 2. Existing Logic
     db.prepare("UPDATE student_courses SET status = 'dropped' WHERE student_id = ? AND status = 'enrolled'").run(req.body.studentId);
     res.json({ success: true });
+
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -876,5 +935,23 @@ function checkTimeConflict(newCourse, existingCourses) {
 
   console.log("--- NO CONFLICT FOUND ---\n");
   return { conflict: false };
+}
+function isDropAllowed() {
+  const now = new Date();
+  const window = db.prepare("SELECT * FROM drop_schedule WHERE is_active = 1 ORDER BY id DESC LIMIT 1").get();
+
+  if (!window) return { allowed: false, message: "Drop period is not active." };
+
+  const start = new Date(window.start_date);
+  const end = new Date(window.end_date);
+
+  if (now >= start && now <= end) {
+    return { allowed: true };
+  }
+
+  return {
+    allowed: false,
+    message: `Drop Window Closed.\nAllowed from: ${start.toLocaleString()}\nUntil: ${end.toLocaleString()}`
+  };
 }
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));

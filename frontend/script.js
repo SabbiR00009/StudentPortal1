@@ -182,8 +182,14 @@ function switchView(viewName, btn, pushState = true) {
 
 async function loadHomeData() {
   try {
-    const res = await fetch(`${API_URL}/students/${currentStudent.dbId}/courses`);
-    const allCourses = await res.json();
+    // 1. Fetch Courses AND Drop Status
+    const [courseRes, dropRes] = await Promise.all([
+      fetch(`${API_URL}/students/${currentStudent.dbId}/courses`),
+      fetch(`${API_URL}/students/drop-status`)
+    ]);
+
+    const allCourses = await courseRes.json();
+    const dropStatus = await dropRes.json();
 
     const enrolled = allCourses.filter(c => c.status === 'enrolled');
     const completed = allCourses.filter(c => c.completed_semester);
@@ -191,6 +197,7 @@ async function loadHomeData() {
 
     currentEnrolledCredits = enrolled.reduce((sum, c) => sum + (c.credits || 0), 0);
 
+    // Stats
     document.getElementById("coursesCount").innerHTML = `${enrolled.length} <small>(${currentEnrolledCredits} Cr)</small>`;
     document.getElementById("creditsCount").innerText = completed.reduce((sum, c) => sum + (c.credits || 0), 0);
 
@@ -199,8 +206,28 @@ async function loadHomeData() {
     document.getElementById("gpaDisplay").innerText = calculateCGPA(grades);
     document.getElementById("semestersCount").innerText = new Set(grades.map(g => g.semester)).size;
 
+    // Current Schedule List & Drop Button
     const listContainer = document.getElementById("coursesList");
     const dropBtn = document.getElementById("dropSemesterBtn");
+
+    // --- HANDLE DROP SEMESTER BUTTON ---
+    if (dropBtn) {
+      if (!dropStatus.allowed) {
+        // Drop Window Closed: Disable button & Update text
+        dropBtn.disabled = true;
+        dropBtn.style.opacity = "0.6";
+        dropBtn.style.cursor = "not-allowed";
+        dropBtn.innerHTML = `<i class="fas fa-ban"></i> Drop Schedule Ended`;
+        dropBtn.title = "The drop period for this semester has closed.";
+      } else {
+        // Drop Window Open: Normal State
+        dropBtn.disabled = false;
+        dropBtn.style.opacity = "1";
+        dropBtn.style.cursor = "pointer";
+        dropBtn.innerHTML = `<i class="fas fa-trash-alt"></i> Drop Semester`;
+        dropBtn.title = "";
+      }
+    }
 
     if (enrolled.length === 0 && dropped.length > 0) {
       if (dropBtn) { dropBtn.disabled = true; dropBtn.style.opacity = "0.5"; dropBtn.title = "Semester already dropped"; }
@@ -210,8 +237,6 @@ async function loadHomeData() {
                     <h3>You have dropped this semester (Fall-2025)</h3>
                 </div>`;
     } else {
-      if (dropBtn) { dropBtn.disabled = false; dropBtn.style.opacity = "1"; }
-
       if (enrolled.length > 0) {
         listContainer.innerHTML = enrolled.map(c => `
                     <div style="padding:15px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
@@ -264,13 +289,21 @@ async function loadProfile() {
 
 async function loadSchedule() {
   try {
-    const res = await fetch(`${API_URL}/students/${currentStudent.dbId}/courses`);
-    const allCourses = await res.json();
+    // 1. Fetch Courses AND Drop Status in parallel
+    const [courseRes, dropRes] = await Promise.all([
+      fetch(`${API_URL}/students/${currentStudent.dbId}/courses`),
+      fetch(`${API_URL}/students/drop-status`)
+    ]);
+
+    const allCourses = await courseRes.json();
+    const dropStatus = await dropRes.json(); // { allowed: true/false, message: ... }
+
     const enrolled = allCourses.filter(c => c.status === 'enrolled');
     const history = allCourses.filter(c => c.status !== 'enrolled' && c.status !== 'dropped');
 
     let html = "";
 
+    // Active Semester Table
     if (enrolled.length > 0) {
       html += `
                 <div class="semester-block">
@@ -281,16 +314,28 @@ async function loadSchedule() {
                     <table>
                         <thead><tr><th>Code</th><th>Name</th><th>Credits</th><th>Schedule</th><th>Room</th><th>Action</th></tr></thead>
                         <tbody>
-                        ${enrolled.map(c => `
+                        ${enrolled.map(c => {
+        // --- CONDITIONAL ACTION BUTTON ---
+        let actionHtml;
+        if (dropStatus.allowed) {
+          // Show the Button (Standard)
+          actionHtml = `<button class="remove-btn" onclick="dropCourse(${c.id})"><i class="fas fa-minus-circle"></i></button>`;
+        } else {
+          // Show the Message
+          actionHtml = `<span style="font-size:0.8em; color:#dc2626; font-weight:600; background:#fee2e2; padding:4px 8px; border-radius:4px;">Drop Ended</span>`;
+        }
+
+        return `
                             <tr>
                                 <td>${c.code}</td>
                                 <td>${c.name}</td>
                                 <td>${c.credits}</td>
                                 <td>${formatSchedule(c)}</td>
                                 <td>${c.room_number}</td>
-                                <td><button class="remove-btn" onclick="dropCourse(${c.id})"><i class="fas fa-minus-circle"></i></button></td>
+                                <td>${actionHtml}</td>
                             </tr>
-                        `).join('')}
+                            `;
+      }).join('')}
                         </tbody>
                     </table>
                 </div>`;
@@ -298,6 +343,7 @@ async function loadSchedule() {
       html += '<div class="card"><p>No active courses this semester.</p></div>';
     }
 
+    // History (No changes needed here)
     if (history.length > 0) {
       html += '<h3 style="margin:30px 0 10px 0; color:#6b7280; border-bottom:1px solid #eee; padding-bottom:10px;">Course History</h3>';
       const grouped = {};

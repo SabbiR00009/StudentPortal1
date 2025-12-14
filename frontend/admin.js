@@ -34,10 +34,84 @@ document.addEventListener("DOMContentLoaded", () => {
       switchAdminView("overview", overviewBtn);
     });
   }
-
+  const dropForm = document.getElementById("dropScheduleForm");
+  if (dropForm) {
+    dropForm.addEventListener("submit", setDropSchedule);
+    loadDropSchedule(); // Load data when page opens
+  }
   setupAdminAvatar();
 });
 
+
+// =========================================================
+// DROP SCHEDULE LOGIC
+// =========================================================
+
+async function setDropSchedule(e) {
+  e.preventDefault();
+
+  const body = {
+    semester: document.getElementById("dropSemester").value,
+    start: document.getElementById("dropStart").value,
+    end: document.getElementById("dropEnd").value
+  };
+
+  try {
+    const res = await fetch(`${API_URL}/admin/drop-schedule`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      alert("✅ Drop Window Updated Successfully!");
+      loadDropSchedule();
+    } else {
+      alert("Error: " + data.error);
+    }
+  } catch (e) {
+    alert("Connection Failed");
+  }
+}
+
+async function loadDropSchedule() {
+  try {
+    const res = await fetch(`${API_URL}/admin/drop-schedule`);
+    const data = await res.json();
+
+    const display = document.getElementById("currentDropWindow");
+    const badge = document.getElementById("dropStatusBadge");
+
+    if (data) {
+      const start = new Date(data.start_date);
+      const end = new Date(data.end_date);
+      const now = new Date();
+      const isActive = now >= start && now <= end;
+
+      // Update Text
+      display.innerHTML = `
+                <strong>Active Window:</strong> 
+                ${start.toLocaleString()} — ${end.toLocaleString()}
+            `;
+
+      // Update Badge Color
+      if (isActive) {
+        badge.style.background = "#dcfce7";
+        badge.style.color = "#166534";
+        badge.innerText = "OPEN NOW";
+      } else {
+        badge.style.background = "#fee2e2";
+        badge.style.color = "#991b1b";
+        badge.innerText = "CLOSED";
+      }
+
+    } else {
+      display.innerHTML = "No drop schedule set.";
+      badge.innerText = "NOT SET";
+    }
+  } catch (e) { console.error(e); }
+}
 // =========================================================
 // HELPER FUNCTIONS
 // =========================================================
