@@ -216,12 +216,12 @@ async function deleteStudent(studentId) {
 // --- 2. FACULTY MANAGEMENT ---
 function openAddFacultyModal() { document.getElementById("facultyModal").style.display = "flex"; }
 
+// [FIXED] REGISTER FACULTY FUNCTION
 async function registerFaculty(e) {
     e.preventDefault();
+
     const body = {
-        faculty_id: document.getElementById("nfId").value,
         name: document.getElementById("nfName").value,
-        email: document.getElementById("nfEmail").value,
         department: document.getElementById("nfDept").value,
         designation: document.getElementById("nfDesignation").value
     };
@@ -232,17 +232,20 @@ async function registerFaculty(e) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body)
         });
+        
         const data = await res.json();
+        
         if(data.success) {
-            alert("Faculty Member Added!");
+            alert(data.message); // Shows: "Faculty Added! ID: F-CSE-xxx"
             document.getElementById("facultyModal").style.display = 'none';
             e.target.reset();
             loadFaculty();
-            loadFacultyForDropdowns(); // Refresh dropdowns
+            loadFacultyForDropdowns(); // Refresh the dropdowns in the Student Registration form
         } else {
             alert("Error: " + (data.error || "Unknown Error"));
         }
     } catch(err) {
+        console.error(err);
         alert("Connection Error");
     }
 }

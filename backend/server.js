@@ -68,17 +68,29 @@ app.get("/api/admin/faculty", (req, res) => {
   }
 });
 
+// CREATE FACULTY (Auto ID & Email)
 app.post("/api/admin/faculty", (req, res) => {
-  try {
-    const { faculty_id, name, email, department, designation } = req.body;
-    // Default password '123456' is handled by DB default or set here
-    db.prepare(
-      "INSERT INTO faculty (faculty_id, name, email, department, designation, password) VALUES (?, ?, ?, ?, ?, '123456')"
-    ).run(faculty_id, name, email, department, designation);
-    res.json({ success: true });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+    try {
+        const { name, department, designation } = req.body;
+
+        // 1. Generate Faculty ID: F-[Dept]-[3 Random Digits]
+        // Example: F-CSE-102
+        const randomNum = Math.floor(100 + Math.random() * 900); 
+        const faculty_id = `${department}-${randomNum}`;
+        
+        // 2. Auto-Generate Email
+        const email = `${faculty_id}san.edu`;
+
+        // 3. Insert
+        db.prepare(
+            "INSERT INTO faculty (faculty_id, name, email, department, designation, password) VALUES (?, ?, ?, ?, ?, '123456')"
+        ).run(faculty_id, name, email, department, designation);
+
+        res.json({ success: true, message: `Faculty Added! ID: ${faculty_id}` });
+
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 app.delete("/api/admin/faculty/:id", (req, res) => {
@@ -129,7 +141,7 @@ app.post("/api/admin/students", (req, res) => {
         const finalId = `${admittedYear}-${sCode}-${dCode}-${serial}`;
         
         // 2. Auto-Generate Email
-        const finalEmail = `${finalId}@gmail.com`;
+        const finalEmail = `${finalId}@san.edu`;
 
         const uniqueId = `U-${Math.floor(Math.random() * 1000000)}`;
 
