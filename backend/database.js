@@ -30,10 +30,11 @@ db.exec(`
     advising_status TEXT DEFAULT 'pending'
   );
 
-  -- FACULTY
+  -- FACULTY (Updated with Password)
   CREATE TABLE IF NOT EXISTS faculty (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     faculty_id TEXT UNIQUE NOT NULL,
+    password TEXT DEFAULT '123456', -- Added Password Column
     name TEXT NOT NULL,
     email TEXT NOT NULL,
     department TEXT,
@@ -138,16 +139,16 @@ if (studentCount.count === 0) {
     `INSERT INTO admins (email, password, name) VALUES ('sabbir.hossain.28678@gmail.com', 'sabbir009', 'Super Admin')`
   ).run();
 
-  // B. Insert Faculty
+  // B. Insert Faculty (Updated with Passwords)
   const facultyList = [
-    ["F001", "Dr. Ada Lovelace", "ada@san.edu", "CSE", "Professor"],
-    ["F002", "Dr. Tesla", "tesla@san.edu", "EEE", "Professor"],
-    ["F003", "Prof. Ledger", "ledger@san.edu", "BBA", "Lecturer"],
+    ["F001", "123456", "Dr. Ada Lovelace", "ada@san.edu", "CSE", "Professor"],
+    ["F002", "123456", "Dr. Tesla", "tesla@san.edu", "EEE", "Professor"],
+    ["F003", "123456", "Prof. Ledger", "ledger@san.edu", "BBA", "Lecturer"],
   ];
   const insertFaculty = db.prepare(
-    "INSERT INTO faculty (faculty_id, name, email, department, designation) VALUES (?, ?, ?, ?, ?)"
+    "INSERT INTO faculty (faculty_id, password, name, email, department, designation) VALUES (?, ?, ?, ?, ?, ?)"
   );
-  facultyList.forEach((f) => insertFaculty.run(f[0], f[1], f[2], f[3], f[4]));
+  facultyList.forEach((f) => insertFaculty.run(f[0], f[1], f[2], f[3], f[4], f[5]));
 
   // C. Insert Courses (Department Wise)
   const insertCourse = db.prepare(`
@@ -178,7 +179,7 @@ if (studentCount.count === 0) {
       c[2],
       c[3],
       c[4],
-      "faculty@san.edu",
+      "faculty@san.edu", // Default fallback email if needed
       "MW 10:00",
       "AB1-101",
       1,

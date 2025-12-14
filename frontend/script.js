@@ -3,7 +3,7 @@ let currentStudent = null;
 let advisingSlip = []; // Local cart for courses
 let pollingInterval = null; // Timer for seat updates
 let currentEnrolledCredits = 0; // Track credits for validation
-let loginRole = 'student'; // Tracks if user clicked "Student" or "Faculty"
+let loginRole = 'student'; // Tracks if user clicked "Student", "Faculty", or "Admin"
 
 // --- 0. AUTO-FIX CSS (Self-Healing) ---
 (function fixStyles() {
@@ -125,7 +125,7 @@ window.showLanding = function() {
     window.scrollTo(0,0);
 }
 
-// [UPDATED] Show Login with strict Role context AND Correct Placeholder
+// [UPDATED] Show Login with strict Role context (Student, Admin, Faculty)
 window.showLogin = function(type) {
     loginRole = type || 'student'; // Set global state
     
@@ -136,18 +136,24 @@ window.showLogin = function(type) {
     // UI Elements
     const titleEl = document.getElementById("loginTitle");
     const labelEl = document.querySelector("#loginForm label"); 
-    const inputEl = document.getElementById("studentId"); // Select the input field
+    const inputEl = document.getElementById("studentId"); 
 
+    // Handle UI for different roles
     if (loginRole === 'admin') {
-        titleEl.innerText = "Faculty & Admin Sign In";
-        titleEl.style.color = "#dc2626"; // Red for Admin
+        titleEl.innerText = "Admin Console";
+        titleEl.style.color = "#dc2626"; // Red
         labelEl.innerText = "Admin Email";
-        inputEl.placeholder = "e.g., admin@san.edu"; // <--- FIXED PLACEHOLDER
+        inputEl.placeholder = "e.g., admin@san.edu";
+    } else if (loginRole === 'faculty') {
+        titleEl.innerText = "Faculty Portal";
+        titleEl.style.color = "#7c3aed"; // Purple
+        labelEl.innerText = "Faculty Email / ID";
+        inputEl.placeholder = "e.g., ada@san.edu";
     } else {
         titleEl.innerText = "Student Sign In";
-        titleEl.style.color = "#1e3a8a"; // Blue for Student
+        titleEl.style.color = "#1e3a8a"; // Blue
         labelEl.innerText = "Student ID";
-        inputEl.placeholder = "e.g., 2025-3-60-001"; // <--- FIXED PLACEHOLDER
+        inputEl.placeholder = "e.g., 2025-3-60-001";
     }
     
     // Clear previous errors/inputs
@@ -199,11 +205,21 @@ async function handleLogin(e) {
     const data = await res.json();
 
     if (res.ok) {
+      // 1. ADMIN REDIRECT
       if (data.userType === "admin") {
         sessionStorage.setItem("adminUser", JSON.stringify(data.user));
         window.location.href = "admin.html";
         return;
       }
+      
+      // 2. FACULTY REDIRECT (New)
+      if (data.userType === "faculty") {
+        sessionStorage.setItem("facultyUser", JSON.stringify(data.user));
+        window.location.href = "faculty.html";
+        return;
+      }
+
+      // 3. STUDENT DASHBOARD
       currentStudent = data.student;
       currentStudent.dbId = data.student.id || data.student._id;
       localStorage.setItem('san_student', JSON.stringify(currentStudent));
@@ -213,6 +229,7 @@ async function handleLogin(e) {
       errEl.style.display = "block";
     }
   } catch (e) {
+    console.error(e);
     errEl.innerText = "Server Connection Failed.";
     errEl.style.display = "block";
   }

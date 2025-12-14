@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faculty Portal - LMS</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Faculty Specific Advanced Styles */
+        :root { --fac-primary: #7c3aed; --fac-light: #f3e8ff; --fac-dark: #5b21b6; }
+        .faculty-theme .navbar { border-bottom: 3px solid var(--fac-primary); }
+        .faculty-theme .user-avatar { background: var(--fac-light); color: var(--fac-primary); }
+        .faculty-theme .nav-btn.active { background: var(--fac-light); color: var(--fac-primary); border-right: 3px solid var(--fac-primary); }
+        
+        /* Dashboard Cards */
+        .dash-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); transition: 0.3s; border-left: 5px solid transparent; cursor: pointer; }
+        .dash-card:hover { transform: translateY(-5px); border-left-color: var(--fac-primary); }
+        .dash-card h3 { color: var(--fac-dark); margin-bottom: 5px; font-size: 1.4em; }
+        
+        /* Course Manager Layout */
+        .course-header { background: linear-gradient(135deg, var(--fac-primary), #4f46e5); color: white; padding: 30px; border-radius: 12px; margin-bottom: 20px; }
+        .course-tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; }
+        .tab-btn { padding: 10px 20px; border: none; background: none; font-weight: 600; color: #6b7280; cursor: pointer; border-radius: 6px; }
+        .tab-btn:hover { background: #f3f4f6; }
+        .tab-btn.active { background: var(--fac-light); color: var(--fac-primary); }
+        
+        /* Content Areas */
+        .tab-content { display: none; animation: fadeIn 0.3s; }
+        .tab-content.active { display: block; }
+        
+        /* Attendance Grid */
+        .att-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin-top: 15px; }
+        .att-card { background: #fff; border: 1px solid #e5e7eb; padding: 10px; text-align: center; border-radius: 8px; cursor: pointer; }
+        .att-card.present { background: #dcfce7; border-color: #22c55e; }
+        .att-card.absent { background: #fee2e2; border-color: #ef4444; }
+        .att-card.late { background: #fef9c3; border-color: #eab308; }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body class="faculty-theme">
+
+    <div class="dashboard" id="dashboard" style="display:block;">
+        <div class="navbar">
+            <div class="logo-container">
+                <img src="/public/logo.png" alt="SAN" class="navbar-logo">
+                <h1><i class="fas fa-chalkboard-teacher"></i> Faculty LMS</h1>
+            </div>
+            <div class="user-info">
+                <div style="text-align:right;">
+                    <span id="facName" style="font-weight:bold; display:block;">Loading...</span>
+                    <span id="facEmail" style="font-size:0.8em; color:#6b7280;">...</span>
+                </div>
+                <div class="user-avatar" id="facAvatar">F</div>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+        </div>
+
+        <div class="dashboard-content">
+            <div class="side-panel" style="grid-column: 1 / 2;">
+                <div class="card">
+                    <h3 class="menu-title">NAVIGATION</h3>
+                    <div class="nav-menu">
+                        <button class="nav-btn active" onclick="switchMainView('dashboard')"><i class="fas fa-th-large"></i> Dashboard</button>
+                        <button class="nav-btn" onclick="switchMainView('schedule')"><i class="fas fa-calendar-alt"></i> My Schedule</button>
+                        <button class="nav-btn" onclick="switchMainView('profile')"><i class="fas fa-user-circle"></i> Profile</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3 class="menu-title">MY COURSES</h3>
+                    <div id="sidebarCourseList" class="nav-menu">
+                        <p style="padding:10px; color:#999;">Loading...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="main-panel" style="grid-column: 2 / -1;">
+                
+                <div id="view-dashboard" class="view-section active">
+                    <div class="welcome-section" style="background: linear-gradient(135deg, #7c3aed, #4f46e5);">
+                        <h2>Welcome, Professor.</h2>
+                        <p>Manage your classes, track attendance, and grade assignments.</p>
+                    </div>
+                    <h3 style="margin-bottom:15px; color:#4b5563;">Active Courses</h3>
+                    <div id="dashboardCourseGrid" class="stats-grid" style="grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));">
+                        </div>
+                </div>
+
+                <div id="view-course-manager" class="view-section">
+                    <div id="courseHeader" class="course-header">
+                        <h1 id="cmCode" style="margin:0; font-size:2.5em;">CSE101</h1>
+                        <p id="cmName" style="font-size:1.2em; opacity:0.9;">Intro to CS</p>
+                        <div style="margin-top:10px; font-size:0.9em;">
+                            <i class="fas fa-users"></i> <span id="cmCount">0</span> Students &bull; 
+                            <i class="fas fa-clock"></i> <span id="cmSchedule">MW 10:00</span>
+                        </div>
+                    </div>
+
+                    <div class="course-tabs">
+                        <button class="tab-btn active" onclick="switchCourseTab('roster')">Student Roster & Grades</button>
+                        <button class="tab-btn" onclick="switchCourseTab('attendance')">Attendance</button>
+                        <button class="tab-btn" onclick="switchCourseTab('materials')">Materials & Notices</button>
+                    </div>
+
+                    <div id="tab-roster" class="tab-content active">
+                        <div class="card">
+                            <div class="table-responsive">
+                                <table id="rosterTable">
+                                    <thead><tr><th>ID</th><th>Name</th><th>Attendance %</th><th>Current Grade</th><th>Action</th></tr></thead>
+                                    <tbody id="rosterList"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="tab-attendance" class="tab-content">
+                        <div class="card">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <h3>Take Attendance</h3>
+                                <input type="date" id="attDate" class="admin-input" style="width:auto;">
+                            </div>
+                            <p style="color:#666; font-size:0.9em;">Click on student cards to toggle status: Present (Green) -> Absent (Red) -> Late (Yellow).</p>
+                            <div id="attendanceGrid" class="att-grid"></div>
+                            <button class="admin-btn primary" onclick="saveAttendance()" style="margin-top:20px; width:100%;">Save Attendance Record</button>
+                        </div>
+                    </div>
+
+                    <div id="tab-materials" class="tab-content">
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                            <div class="card">
+                                <h3><i class="fas fa-bullhorn"></i> Class Notices</h3>
+                                <form id="noticeForm" style="margin-bottom:15px; padding-bottom:15px; border-bottom:1px solid #eee;">
+                                    <input id="noteTitle" placeholder="Title" class="admin-input" style="margin-bottom:10px;" required>
+                                    <textarea id="noteMsg" placeholder="Message" class="admin-input" rows="2" required></textarea>
+                                    <button type="submit" class="admin-btn primary small">Post Notice</button>
+                                </form>
+                                <div id="noticeList" style="max-height:300px; overflow-y:auto;"></div>
+                            </div>
+                            <div class="card">
+                                <h3><i class="fas fa-file-alt"></i> Course Materials</h3>
+                                <form id="materialForm" style="margin-bottom:15px; padding-bottom:15px; border-bottom:1px solid #eee;">
+                                    <input id="matTitle" placeholder="Title (e.g. Week 1 Slides)" class="admin-input" style="margin-bottom:10px;" required>
+                                    <select id="matType" class="admin-input" style="margin-bottom:10px;">
+                                        <option value="lecture">Lecture Note</option>
+                                        <option value="assignment">Assignment</option>
+                                        <option value="resource">External Resource</option>
+                                    </select>
+                                    <input id="matLink" placeholder="URL Link" class="admin-input" style="margin-bottom:10px;">
+                                    <textarea id="matDesc" placeholder="Description" class="admin-input" rows="2"></textarea>
+                                    <button type="submit" class="admin-btn primary small">Upload Material</button>
+                                </form>
+                                <div id="materialList" style="max-height:300px; overflow-y:auto;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-profile" class="view-section">
+                    <div class="card">
+                        <h3>Faculty Profile</h3>
+                        <p>Functionality to edit bio and office hours coming soon.</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script src="faculty.js"></script>
+</body>
+</html>

@@ -25,7 +25,6 @@ app.post("/api/login", (req, res) => {
             const { password, ...d } = admin;
             return res.json({ success: true, user: d, userType: "admin" });
         } else {
-            // Security: If they try to login as admin but are not in admin table, fail.
             return res.status(401).json({ error: "Invalid Admin credentials" });
         }
     }
@@ -39,6 +38,20 @@ app.post("/api/login", (req, res) => {
             return res.json({ success: true, student: d, userType: "student" });
         } else {
             return res.status(401).json({ error: "Invalid Student credentials" });
+        }
+    }
+
+    // CASE 3: FACULTY LOGIN (Added)
+    if (role === 'faculty') {
+        // Login via Email OR Faculty ID
+        const faculty = db.prepare("SELECT * FROM faculty WHERE (faculty_id = ? OR email = ?) AND password = ?")
+                          .get(id, id, password);
+
+        if (faculty) {
+            const { password, ...d } = faculty;
+            return res.json({ success: true, user: d, userType: "faculty" });
+        } else {
+            return res.status(401).json({ error: "Invalid Faculty credentials" });
         }
     }
 
@@ -64,8 +77,9 @@ app.get("/api/admin/faculty", (req, res) => {
 app.post("/api/admin/faculty", (req, res) => {
   try {
     const { faculty_id, name, email, department, designation } = req.body;
+    // Default password '123456' is handled by DB default or set here
     db.prepare(
-      "INSERT INTO faculty (faculty_id, name, email, department, designation) VALUES (?, ?, ?, ?, ?)"
+      "INSERT INTO faculty (faculty_id, name, email, department, designation, password) VALUES (?, ?, ?, ?, ?, '123456')"
     ).run(faculty_id, name, email, department, designation);
     res.json({ success: true });
   } catch (e) {
@@ -600,6 +614,53 @@ app.post("/api/advising/confirm", (req, res) => {
 app.get("/api/announcements", (req, res) => {
   try {
     res.json(db.prepare("SELECT * FROM announcements ORDER BY created_at DESC LIMIT 10").all());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ============= FACULTY PORTAL ROUTES =============
+
+// 1. Get Courses Taught by Faculty (Matched by Email)
+app.get("/api/faculty/:email/courses", (req, res) => {
+  try {
+    const courses = db.prepare("SELECT * FROM courses WHERE instructor_email = ?").all(req.params.email);
+    res.json(courses);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// 2. Get Students Enrolled in a Specific Course
+app.get("/api/faculty/course/:courseId/students", (req, res) => {
+  try {
+    const students = db.prepare(`
+        SELECT s.id, s.student_id, s.name, s.email, g.grade 
+        FROM student_courses sc
+        JOIN students s ON sc.student_id = s.id
+        LEFT JOIN grades g ON s.id = g.student_id AND sc.course_id = g.course_id
+        WHERE sc.course_id = ? AND sc.status = 'enrolled'
+    `).all(req.params.courseId);
+    res.json(students);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// 3. Submit/Update Grade
+app.post("/api/faculty/grade", (req, res) => {
+  try {
+    const { studentDbId, courseId, grade, semester } = req.body;
+    
+    // Check if grade exists
+    const exists = db.prepare("SELECT id FROM grades WHERE student_id = ? AND course_id = ?").get(studentDbId, courseId);
+    
+    if (exists) {
+        db.prepare("UPDATE grades SET grade = ? WHERE id = ?").run(grade, exists.id);
+    } else {
+        db.prepare("INSERT INTO grades (student_id, course_id, grade, semester) VALUES (?, ?, ?, ?)").run(studentDbId, courseId, grade, semester);
+    }
+    res.json({ success: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
