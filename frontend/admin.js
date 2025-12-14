@@ -188,10 +188,15 @@ function logout() {
 // =========================================================
 // 1. MANAGE STUDENTS
 // =========================================================
+
 async function loadStudents() {
-  const search = document.getElementById("studentSearch").value;
-  const url = search
-    ? `${API_URL}/admin/students?search=${search}`
+  // 1. Get the value from the search bar
+  const searchInput = document.getElementById("studentSearch");
+  const searchTerm = searchInput ? searchInput.value : "";
+
+  // 2. Build the URL (Append query if search exists)
+  const url = searchTerm
+    ? `${API_URL}/admin/students?search=${encodeURIComponent(searchTerm)}`
     : `${API_URL}/admin/students`;
 
   try {
@@ -199,30 +204,43 @@ async function loadStudents() {
     const students = await res.json();
     const tbody = document.getElementById("studentList");
 
+    // 3. Handle Empty State
     if (students.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No students found.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px; color: #666;">No students found.</td></tr>';
       return;
     }
 
+    // 4. Render Table Rows
     tbody.innerHTML = students.map((s) => `
             <tr>
                 <td><strong>${s.student_id}</strong></td>
-                <td>${s.name}</td>
-                <td>${s.department}</td>
-                <td>${s.advisor_name || "None"}</td>
                 <td>
-                    <button onclick="openEditStudentModal('${s.student_id}', ${s.id})" class="action-btn" title="Edit" style="color:#4F46E5;"><i class="fas fa-edit"></i></button>
-                    <button onclick="adminDropSemester(${s.id})" class="action-btn btn-delete" title="Drop Semester"><i class="fas fa-ban"></i></button>
-                    <button onclick="deleteStudent('${s.student_id}')" class="action-btn btn-delete" title="Delete Student"><i class="fas fa-trash"></i></button>
+                    <div style="font-weight:600;">${s.name}</div>
+                    <div style="font-size:0.8em; color:#666;">${s.email}</div>
+                </td>
+                <td><span class="dept-badge">${s.department}</span></td>
+                <td>${s.advisor_name || '<span style="color:#ccc;">None</span>'}</td>
+                <td>
+                    <div style="display:flex; gap: 8px;">
+                        <button onclick="openEditStudentModal('${s.student_id}', ${s.id})" class="action-btn" title="Edit">
+                            <i class="fas fa-edit" style="color:#4F46E5;"></i>
+                        </button>
+                        <button onclick="deleteStudent('${s.student_id}')" class="action-btn" title="Delete">
+                            <i class="fas fa-trash" style="color:#dc2626;"></i>
+                        </button>
+                    </div>
                 </td>
             </tr>
         `).join("");
   } catch (e) {
-    console.error(e);
+    console.error("Error loading students:", e);
   }
 }
 
-function searchStudents() { loadStudents(); }
+// This function is called by the HTML onkeyup event
+function searchStudents() {
+  loadStudents();
+}
 function openAddStudentModal() { document.getElementById("studentModal").style.display = "flex"; }
 
 async function registerStudent(e) {
@@ -596,47 +614,214 @@ async function loadAdminCourses() {
   }
 }
 
+// --- HELPER: PARSE TIME TO MINUTES ---
+// Accepts: "08:30", "8:30", "08:30:00", "Slot 1: 08:30 - 10:00"
+function parseTimeRange(timeStr) {
+  if (!timeStr) return null;
+
+  // 1. Clean up "Slot X:" prefix
+  let range = timeStr.includes("Slot") ? timeStr.split(":")[1] : timeStr;
+  range = range.trim(); // e.g. "08:30 - 10:00"
+
+  // 2. Split Start and End
+  const parts = range.split("-");
+  if (parts.length !== 2) return null;
+
+  const [s, e] = parts.map(t => t.trim());
+
+  // 3. Convert to Minutes (e.g. "08:30" -> 510)
+  const toMin = (t) => {
+    const [h, m] = t.split(":").map(Number);
+    return (h * 60) + (m || 0);
+  };
+
+  return { start: toMin(s), end: toMin(e) };
+}
+
+// --- HELPER: CHECK SCHEDULE CONFLICTS ---
+function validateScheduleConflict(theoryDaysCode, theoryTimeStr, labDay, labTimeStr) {
+  console.log(`Checking Conflict: ${theoryDaysCode} ${theoryTimeStr} vs ${labDay} ${labTimeStr}`);
+
+  // 1. Map Theory Codes to Days
+  const theoryMap = {
+    "MW": ["Mon", "Wed", "Monday", "Wednesday", "M", "W"],
+    "ST": ["Sun", "Tue", "Sunday", "Tuesday", "S", "T"],
+    "SR": ["Sun", "Thu", "Sunday", "Thursday", "S", "R"],
+    "TR": ["Tue", "Thu", "Tuesday", "Thursday", "T", "R"]
+  };
+
+  const activeDays = theoryMap[theoryDaysCode] || [];
+
+  // 2. Normalize Lab Day (Handle "Mon", "Monday", "M")
+  const cleanLabDay = labDay.trim();
+
+  // If Lab Day is NOT in the Theory Days list, they can't clash.
+  // Example: Theory on Mon/Wed, Lab on Tue -> Safe.
+  const isDayMatch = activeDays.some(d => d.startsWith(cleanLabDay) || cleanLabDay.startsWith(d));
+  if (!isDayMatch) return true;
+
+  // 3. Check Time Overlap
+  const t = parseTimeRange(theoryTimeStr);
+  const l = parseTimeRange(labTimeStr);
+
+  if (!t || !l) {
+    console.error("Invalid time format detected");
+    return true; // Skip check if invalid
+  }
+
+  // Overlap Logic: (Start A < End B) AND (End A > Start B)
+  if (t.start < l.end && t.end > l.start) {
+    console.warn("Conflict Detected!");
+    return false; // FAIL
+  }
+
+  return true; // PASS
+}
+
+// --- MAIN ADD COURSE FUNCTION ---
 async function addCourse(e) {
   e.preventDefault();
 
+  // 1. Validate Instructor
   const instructorSelect = document.getElementById("cInstructor");
   if (!instructorSelect.value) return alert("Please select a valid instructor.");
 
+  const credits = document.getElementById("cCredits").value;
+  const sectionVal = document.getElementById("cSection").value;
+
+  // 2. Validate Schedule (Time Clash Check)
+  if (credits === "4" || credits === "4.5") {
+    const tDays = document.getElementById("cTheoryDays").value;
+    const tTime = document.getElementById("cTheoryTime").value;
+    const lDay = document.getElementById("cLabDay").value;
+    const lTime = document.getElementById("cLabTime").value;
+
+    const isValid = validateScheduleConflict(tDays, tTime, lDay, lTime);
+
+    if (!isValid) {
+      alert(`🚫 SCHEDULE CLASH DETECTED!\n\nYou cannot schedule the Lab on ${lDay} at ${lTime}\nbecause it overlaps with the Theory class (${tDays} at ${tTime}).\n\nPlease choose a different Lab time or day.`);
+      return; // STOP EXECUTION
+    }
+  }
+
+  // 3. Prepare Data Object
   const body = {
-    code: document.getElementById("cCode").value,
-    name: document.getElementById("cName").value,
+    code: document.getElementById("cCode").value.trim(),
+    name: document.getElementById("cName").value.trim(),
+    section: parseInt(sectionVal) || 1, // Ensure integer
     department: document.getElementById("cDept").value,
-    credits: Number(document.getElementById("cCredits").value),
+    credits: Number(credits),
     instructor: instructorSelect.value,
+    // Generate a mock email or use one from DB if available
     instructor_email: `${instructorSelect.value.split(' ')[0].toLowerCase()}@san.edu`,
     room_number: document.getElementById("cRoom").value,
-    section: 1,
     semester: "Fall-2025",
 
-    // Detailed Schedule
+    // Schedule Data
     theory_days: document.getElementById("cTheoryDays").value,
     theory_time: document.getElementById("cTheoryTime").value,
-    lab_day: document.getElementById("cLabDay").value || null,
-    lab_time: document.getElementById("cLabTime").value || null
+    lab_day: (credits === "4" || credits === "4.5") ? document.getElementById("cLabDay").value : null,
+    lab_time: (credits === "4" || credits === "4.5") ? document.getElementById("cLabTime").value : null
   };
 
+  console.log("Sending Course Data:", body);
+
+  // 4. Send to Server
   try {
-    await fetch(`${API_URL}/admin/courses`, {
+    const res = await fetch(`${API_URL}/admin/courses`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    alert("Course Created Successfully!");
-    e.target.reset();
 
-    // Reset UI state
-    document.getElementById("labSection").style.display = "none";
-    document.getElementById("cInstructor").innerHTML = "<option>Select Dept First</option>";
-    document.getElementById("cInstructor").disabled = true;
+    const data = await res.json();
 
-    loadAdminCourses();
+    if (data.success) {
+      alert("✅ Course Created Successfully!");
+      e.target.reset(); // Clear Form
+
+      // Reset UI States
+      document.getElementById("cSection").value = "1";
+      document.getElementById("labSection").style.display = "none";
+      document.getElementById("cInstructor").innerHTML = "<option>Select Dept First</option>";
+      document.getElementById("cInstructor").disabled = true;
+
+      loadAdminCourses(); // Refresh Table
+    } else {
+      // Handle Duplicate Section Error or other DB errors
+      alert("❌ Save Failed: " + (data.error || "Unknown database error"));
+    }
   } catch (error) {
-    alert("Error creating course: " + error.message);
+    console.error(error);
+    alert("Connection Error: " + error.message);
+  }
+}
+
+// --- DISPLAY COURSES (With Percentage & Section) ---
+async function loadAdminCourses() {
+  try {
+    const res = await fetch(`${API_URL}/admin/courses`);
+    const courses = await res.json();
+    const tbody = document.getElementById("courseList");
+
+    if (courses.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No courses defined.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = courses.map(c => {
+      // PERCENTAGE LOGIC
+      const total = c.max_students || 40;
+      const filled = c.enrolled_count || 0;
+      const pct = Math.round((filled / total) * 100);
+
+      // Color Logic
+      let color = '#10b981'; // Green (Safe)
+      if (pct > 80) color = '#f59e0b'; // Orange (Filling up)
+      if (pct >= 100) color = '#ef4444'; // Red (Full)
+
+      // Progress Bar HTML
+      const progressHTML = `
+                <div style="width: 100%; max-width: 120px;">
+                    <div style="display:flex; justify-content:space-between; font-size:0.8em; margin-bottom:3px;">
+                        <span style="font-weight:bold; color:${color}">${filled} / ${total}</span>
+                        <span style="color:#6b7280;">${pct}%</span>
+                    </div>
+                    <div style="width:100%; background:#e5e7eb; height:6px; border-radius:3px; overflow:hidden;">
+                        <div style="width:${pct}%; background:${color}; height:100%;"></div>
+                    </div>
+                </div>
+            `;
+
+      // Schedule Formatting
+      let scheduleDisplay = `<div><strong>${c.theory_days}</strong> ${c.theory_time}</div>`;
+      if (c.lab_day && c.lab_time) {
+        scheduleDisplay += `<div style="font-size:0.8em; color:#4F46E5; margin-top:2px;">Lab: ${c.lab_day} ${c.lab_time}</div>`;
+      }
+
+      return `
+            <tr>
+                <td>
+                    <div style="font-weight:bold;">${c.code}</div>
+                    <div style="font-size:0.8em; color:#6b7280;">Section ${c.section}</div>
+                </td>
+                <td>${c.name}</td>
+                <td>${scheduleDisplay}</td>
+                <td>
+                    ${progressHTML}
+                    <button onclick="editSeatCapacity(${c.id}, ${c.max_students}, '${c.code}')" 
+                        style="font-size:0.7em; margin-top:5px; border:none; background:none; color:#4F46E5; cursor:pointer; text-decoration:underline;">
+                        Adjust Capacity
+                    </button>
+                </td>
+                <td>
+                    <button onclick="deleteCourse(${c.id})" class="action-btn btn-delete"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>
+            `;
+    }).join("");
+  } catch (e) {
+    console.error(e);
   }
 }
 
