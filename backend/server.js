@@ -750,27 +750,149 @@ app.get("/api/faculty/course/:courseId/students", (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// FIXED FACULTY GRADE SUBMIT (Calculates Point/Marks to satisfy DB)
+// REMOVED THE DUPLICATE /api/faculty/grade HERE
+
+// =========================================================
+// FACULTY API ROUTES
+// =========================================================
+
+// 1. GET FACULTY COURSES (For Dashboard & Schedule)
+app.get("/api/faculty/:email/courses", (req, res) => {
+  try {
+    const faculty = db.prepare("SELECT id FROM faculty WHERE email = ?").get(req.params.email);
+    if (!faculty) return res.status(404).json({ error: "Faculty not found" });
+
+    // Get courses assigned to this faculty
+    const courses = db.prepare(`
+            SELECT * FROM courses WHERE instructor_id = ?
+        `).all(faculty.id);
+
+    // Add real enrollment counts
+    const enriched = courses.map(c => {
+      const count = db.prepare("SELECT COUNT(*) as count FROM student_courses WHERE course_id = ? AND status='enrolled'").get(c.id);
+      return { ...c, enrolled_real: count.count };
+    });
+
+    res.json(enriched);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 2. GET ADVISEES (Students assigned to this faculty)
+app.get("/api/faculty/:email/advisees", (req, res) => {
+  try {
+    const faculty = db.prepare("SELECT id FROM faculty WHERE email = ?").get(req.params.email);
+    if (!faculty) return res.json([]);
+
+    const students = db.prepare(`
+            SELECT * FROM students WHERE advisor_email = ?
+        `).all(req.params.email);
+
+    res.json(students);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 3. GET FULL STUDENT PROFILE & GRADES (For Advising View)
+app.get("/api/faculty/student-profile/:id", (req, res) => {
+  try {
+    const idParam = req.params.id;
+
+    // FIX: Search by Database ID (Integer) OR Student ID (String)
+    const student = db.prepare("SELECT * FROM students WHERE id = ? OR student_id = ?").get(idParam, idParam);
+
+    // Safety Check: If student is null, return safe empty data
+    if (!student) {
+      console.log(`[Error] Profile not found for ID: ${idParam}`);
+      return res.json({ student: null, history: [], current: [] });
+    }
+
+    // Get Course History (Use the found student's DB ID to be safe)
+    const history = db.prepare(`
+            SELECT sc.grade, sc.semester, c.code, c.name, c.credits 
+            FROM student_courses sc 
+            JOIN courses c ON sc.course_id = c.id 
+            WHERE sc.student_id = ? AND sc.grade IS NOT NULL
+        `).all(student.id);
+
+    // Get Current Enrollments
+    const current = db.prepare(`
+            SELECT c.id as course_id, c.id, c.code, c.name, 
+                   (c.theory_days || ' ' || c.theory_time) as schedule
+            FROM student_courses sc 
+            JOIN courses c ON sc.course_id = c.id 
+            WHERE sc.student_id = ? AND sc.status = 'enrolled'
+        `).all(student.id);
+
+    res.json({ student, history, current });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.post("/api/faculty/grade", (req, res) => {
   try {
-    const { studentDbId, courseId, grade, semester } = req.body;
+    // 1. We now expect 'marks' (number) from the frontend
+    const { studentDbId, courseId, marks, semester } = req.body;
 
-    // Helper: Map Letter Grade to approximate Point & Mark (since Faculty portal UI isn't sending them yet)
-    const gradeMap = {
-      "A+": { p: 4.00, m: 90 }, "A": { p: 3.75, m: 75 }, "A-": { p: 3.50, m: 70 },
-      "B+": { p: 3.25, m: 65 }, "B": { p: 3.00, m: 60 }, "B-": { p: 2.75, m: 55 },
-      "C+": { p: 2.50, m: 50 }, "C": { p: 2.25, m: 45 }, "D": { p: 2.00, m: 40 }, "F": { p: 0.00, m: 0 }
-    };
-    const { p, m } = gradeMap[grade] || { p: 0.0, m: 0 };
+    // 2. Validate input
+    const numericMarks = parseFloat(marks);
+    if (isNaN(numericMarks) || numericMarks < 0 || numericMarks > 100) {
+      return res.status(400).json({ error: "Invalid marks. Must be 0-100." });
+    }
 
+    // 3. Calculate Grade & Point Automatically
+    let grade = "F";
+    let point = 0.00;
+
+    if (numericMarks >= 80) { grade = "A+"; point = 4.00; }
+    else if (numericMarks >= 75) { grade = "A"; point = 3.75; }
+    else if (numericMarks >= 70) { grade = "A-"; point = 3.50; }
+    else if (numericMarks >= 65) { grade = "B+"; point = 3.25; }
+    else if (numericMarks >= 60) { grade = "B"; point = 3.00; }
+    else if (numericMarks >= 55) { grade = "B-"; point = 2.75; }
+    else if (numericMarks >= 50) { grade = "C+"; point = 2.50; }
+    else if (numericMarks >= 45) { grade = "C"; point = 2.25; }
+    else if (numericMarks >= 40) { grade = "D"; point = 2.00; }
+    // Default is F (0.00)
+
+    // 4. Update Database
     const exists = db.prepare("SELECT id FROM grades WHERE student_id = ? AND course_id = ?").get(studentDbId, courseId);
 
     if (exists) {
-      db.prepare("UPDATE grades SET grade = ?, point = ?, marks = ? WHERE id = ?").run(grade, p, m, exists.id);
+      // Update existing grade
+      db.prepare("UPDATE grades SET marks = ?, grade = ?, point = ? WHERE id = ?")
+        .run(numericMarks, grade, point, exists.id);
     } else {
-      db.prepare("INSERT INTO grades (student_id, course_id, grade, point, marks, semester) VALUES (?, ?, ?, ?, ?, ?)").run(studentDbId, courseId, grade, p, m, semester);
+      // Insert new grade
+      // CRITICAL: We are inserting 'grade' here, which we just calculated above. It will NOT be null.
+      db.prepare("INSERT INTO grades (student_id, course_id, marks, grade, point, semester) VALUES (?, ?, ?, ?, ?, ?)")
+        .run(studentDbId, courseId, numericMarks, grade, point, semester);
     }
-    res.json({ success: true });
+
+    res.json({ success: true, grade, point });
+
+  } catch (e) {
+    console.error("Grading Error:", e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// 5. GET COURSE ROSTER (For Grading)
+app.get("/api/faculty/course/:id/students", (req, res) => {
+  try {
+    // Return students enrolled in this specific course
+    const students = db.prepare(`
+            SELECT s.id, s.student_id, s.name, sc.grade,
+            (SELECT COUNT(*) FROM attendance WHERE student_id = s.id AND course_id = ? AND status = 'present') as present_count,
+            (SELECT COUNT(*) FROM attendance WHERE student_id = s.id AND course_id = ? AND status = 'absent') as absent_count
+            FROM students s
+            JOIN student_courses sc ON s.id = sc.student_id
+            WHERE sc.course_id = ? AND sc.status = 'enrolled'
+        `).all(req.params.id, req.params.id, req.params.id);
+
+    // Add fake avatar for UI
+    const withAvatar = students.map(s => ({ ...s, avatar: `https://ui-avatars.com/api/?name=${s.name}&background=random` }));
+    res.json(withAvatar);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
