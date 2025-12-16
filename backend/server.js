@@ -728,14 +728,8 @@ app.post("/api/advising/confirm", (req, res) => {
 
 app.get("/api/announcements", (req, res) => res.json(db.prepare("SELECT * FROM announcements ORDER BY created_at DESC LIMIT 10").all()));
 
-// ============= FACULTY PORTAL (FIXED FOR NEW SCHEMA) =============
 
-app.get("/api/faculty/:email/courses", (req, res) => {
-  try {
-    const courses = db.prepare("SELECT * FROM courses WHERE instructor_email = ?").all(req.params.email);
-    res.json(courses);
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
+
 
 app.get("/api/faculty/course/:courseId/students", (req, res) => {
   try {
@@ -750,33 +744,33 @@ app.get("/api/faculty/course/:courseId/students", (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// REMOVED THE DUPLICATE /api/faculty/grade HERE
 
 // =========================================================
 // FACULTY API ROUTES
 // =========================================================
 
 // 1. GET FACULTY COURSES (For Dashboard & Schedule)
+
 app.get("/api/faculty/:email/courses", (req, res) => {
   try {
-    const faculty = db.prepare("SELECT id FROM faculty WHERE email = ?").get(req.params.email);
-    if (!faculty) return res.status(404).json({ error: "Faculty not found" });
+    // 1. Get courses assigned to this faculty email
+    const courses = db.prepare("SELECT * FROM courses WHERE instructor_email = ?").all(req.params.email);
 
-    // Get courses assigned to this faculty
-    const courses = db.prepare(`
-            SELECT * FROM courses WHERE instructor_id = ?
-        `).all(faculty.id);
-
-    // Add real enrollment counts
+    // 2. Add real enrollment counts (Calculates 'enrolled_real')
     const enriched = courses.map(c => {
-      const count = db.prepare("SELECT COUNT(*) as count FROM student_courses WHERE course_id = ? AND status='enrolled'").get(c.id);
-      return { ...c, enrolled_real: count.count };
+      const countResult = db.prepare("SELECT COUNT(*) as count FROM student_courses WHERE course_id = ? AND status='enrolled'").get(c.id);
+      return {
+        ...c,
+        enrolled_real: countResult.count
+      };
     });
 
     res.json(enriched);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
 });
-
 // 2. GET ADVISEES (Students assigned to this faculty)
 app.get("/api/faculty/:email/advisees", (req, res) => {
   try {
@@ -793,11 +787,12 @@ app.get("/api/faculty/:email/advisees", (req, res) => {
 
 // 3. GET FULL STUDENT PROFILE & GRADES (For Advising View)
 app.get("/api/faculty/student-profile/:id", (req, res) => {
+  console.log(req.params.id);
   try {
     const idParam = req.params.id;
 
     // FIX: Search by Database ID (Integer) OR Student ID (String)
-    const student = db.prepare("SELECT * FROM students WHERE id = ? OR student_id = ?").get(idParam, idParam);
+    const student = db.prepare("SELECT * FROM students WHERE id = ?").get(idParam);
 
     // Safety Check: If student is null, return safe empty data
     if (!student) {
@@ -807,11 +802,11 @@ app.get("/api/faculty/student-profile/:id", (req, res) => {
 
     // Get Course History (Use the found student's DB ID to be safe)
     const history = db.prepare(`
-            SELECT sc.grade, sc.semester, c.code, c.name, c.credits 
-            FROM student_courses sc 
-            JOIN courses c ON sc.course_id = c.id 
-            WHERE sc.student_id = ? AND sc.grade IS NOT NULL
-        `).all(student.id);
+            SELECT g.semester, c.code, c.name, c.credits, g.grade, g.point
+            FROM grades g
+            JOIN courses c ON c.id = g.course_id
+            WHERE student_id = ? AND g.grade IS NOT NULL
+        `).all(idParam);
 
     // Get Current Enrollments
     const current = db.prepare(`
@@ -820,7 +815,7 @@ app.get("/api/faculty/student-profile/:id", (req, res) => {
             FROM student_courses sc 
             JOIN courses c ON sc.course_id = c.id 
             WHERE sc.student_id = ? AND sc.status = 'enrolled'
-        `).all(student.id);
+        `).all(idParam);
 
     res.json({ student, history, current });
   } catch (e) {
@@ -883,8 +878,6 @@ app.get("/api/faculty/course/:id/students", (req, res) => {
     // Return students enrolled in this specific course
     const students = db.prepare(`
             SELECT s.id, s.student_id, s.name, sc.grade,
-            (SELECT COUNT(*) FROM attendance WHERE student_id = s.id AND course_id = ? AND status = 'present') as present_count,
-            (SELECT COUNT(*) FROM attendance WHERE student_id = s.id AND course_id = ? AND status = 'absent') as absent_count
             FROM students s
             JOIN student_courses sc ON s.id = sc.student_id
             WHERE sc.course_id = ? AND sc.status = 'enrolled'
