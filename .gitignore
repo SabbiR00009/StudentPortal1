@@ -9,6 +9,7 @@ coverage/
 # --- Production Build Output ---
 dist/
 build/
+*package-lock.json
 
 # --- Environment Variables (Security) ---
 .env
