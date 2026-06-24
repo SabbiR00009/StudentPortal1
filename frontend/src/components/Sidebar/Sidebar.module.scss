@@ -1,0 +1,65 @@
+@use '../../styles/variables' as *;
+
+.sidebar {
+  .card {
+    background: $white;
+    padding: 25px;
+    border-radius: $radius-xl;
+    box-shadow: $shadow-sm;
+    border: 1px solid $gray-200;
+    margin-bottom: 25px;
+  }
+
+  .menuTitle {
+    color: $gray-900;
+    margin-top: 0;
+    border-bottom: 1px solid $gray-100;
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+    font-size: 1.1em;
+    font-weight: 600;
+  }
+
+  .navMenu {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+.navBtn {
+  background: transparent;
+  border: none;
+  padding: 14px 18px;
+  border-radius: $radius-md;
+  cursor: pointer;
+  text-align: left;
+  font-weight: 500;
+  color: $gray-600;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.2s;
+  font-size: 0.95em;
+  width: 100%;
+
+  &:hover {
+    background: $gray-100;
+    color: $gray-800;
+  }
+
+  &.active {
+    background: $indigo-bg;
+    color: $indigo;
+    font-weight: 600;
+  }
+
+  &.danger {
+    color: $red;
+    margin-top: 10px;
+
+    &:hover {
+      background: #fef2f2;
+    }
+  }
+}

@@ -12,10 +12,11 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "better-sqlite3": "^12.5.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "mysql2": "^3.22.5",
+    "node-cron": "^4.5.0",
     "run": "^1.5.0"
   },
   "devDependencies": {

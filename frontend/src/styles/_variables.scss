@@ -1,0 +1,72 @@
+// ─── Colors ───
+$blue-primary: #1e3a8a;
+$blue-hover: #1e40af;
+$blue-light: #3b82f6;
+
+$indigo: var(--indigo-primary);
+$indigo-dark: #4338ca;
+$indigo-light: var(--indigo-light);
+$indigo-bg: var(--indigo-bg);
+$indigo-bg-light: #e0e7ff;
+
+$gold: #fbbf24;
+$gold-hover: #f59e0b;
+
+$green: #10b981;
+$green-dark: #059669;
+$green-light: #d1fae5;
+$green-text: #065f46;
+
+$red: #dc2626;
+$red-light: #fee2e2;
+$red-dark: #b91c1c;
+$red-bg: #fff1f2;
+$red-border: #fda4af;
+$red-text: #9f1239;
+
+$orange-bg: #fff7ed;
+$orange-border: #fed7aa;
+$orange-text: #d97706;
+
+// Dynamic Backgrounds & Grays mapping
+$gray-50: var(--bg-inset);
+$gray-100: var(--bg-primary);
+$gray-200: var(--border-color);
+$gray-300: var(--border-light);
+$gray-400: var(--text-light);
+$gray-500: var(--text-muted);
+$gray-600: var(--text-muted);
+$gray-700: var(--text-main);
+$gray-800: var(--text-main);
+$gray-900: var(--text-main);
+
+$white: var(--bg-card);
+
+// ─── Typography ───
+$font-heading: 'Cinzel', serif;
+$font-body: 'Inter', sans-serif;
+
+// ─── Shadows ───
+$shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+$shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+$shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+$shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+$shadow-indigo: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
+
+// ─── Radii ───
+$radius-sm: 6px;
+$radius-md: 8px;
+$radius-lg: 12px;
+$radius-xl: 16px;
+$radius-2xl: 20px;
+$radius-full: 50%;
+
+// ─── Breakpoints ───
+$bp-sm: 640px;
+$bp-md: 768px;
+$bp-lg: 1024px;
+$bp-xl: 1280px;
+
+// ─── Layout ───
+$max-width: 1400px;
+$navbar-height: 70px;

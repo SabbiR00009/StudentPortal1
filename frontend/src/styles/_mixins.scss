@@ -1,0 +1,79 @@
+@use 'variables' as *;
+
+// ─── Card Style ───
+@mixin card-style {
+  background: $white;
+  padding: 25px;
+  border-radius: $radius-xl;
+  box-shadow: $shadow-sm;
+  border: 1px solid $gray-200;
+  margin-bottom: 25px;
+}
+
+// ─── Flex Center ───
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// ─── Flex Between ───
+@mixin flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+// ─── Responsive ───
+@mixin responsive($bp) {
+  @media (max-width: $bp) {
+    @content;
+  }
+}
+
+// ─── Button Base ───
+@mixin btn-base {
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+// ─── Gradient Background ───
+@mixin gradient-bg($from, $to, $angle: 135deg) {
+  background: linear-gradient($angle, $from, $to);
+}
+
+// ─── Truncate Text ───
+@mixin truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// ─── Table Style ───
+@mixin table-style {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95em;
+
+  thead tr {
+    background: $gray-50;
+    text-align: left;
+    border-bottom: 2px solid $gray-200;
+  }
+
+  th, td {
+    padding: 12px;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid $gray-100;
+    transition: background 0.15s;
+
+    &:hover {
+      background: $gray-50;
+    }
+  }
+}

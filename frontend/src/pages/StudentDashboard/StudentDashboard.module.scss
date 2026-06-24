@@ -1,0 +1,477 @@
+@use '../../styles/variables' as *;
+
+.dashboard {
+  min-height: 100vh;
+  background: $gray-100;
+}
+
+.content {
+  padding: 30px;
+  max-width: $max-width;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 3fr 1fr;
+  gap: 30px;
+}
+
+.mainPanel {
+  min-width: 0;
+}
+
+.welcomeSection {
+  background: linear-gradient(120deg, $indigo, $blue-light);
+  color: $white;
+  padding: 40px;
+  border-radius: $radius-xl;
+  margin-bottom: 25px;
+  box-shadow: $shadow-indigo;
+
+  h2 { margin: 0 0 10px 0; font-size: 2em; }
+  p { margin: 0; opacity: 0.9; }
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 20px;
+  margin-bottom: 25px;
+}
+
+.card {
+  background: $white;
+  padding: 25px;
+  border-radius: $radius-xl;
+  box-shadow: $shadow-sm;
+  border: 1px solid $gray-200;
+  margin-bottom: 25px;
+
+  h3 {
+    color: $gray-900;
+    margin-top: 0;
+    border-bottom: 1px solid $gray-100;
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+    font-size: 1.1em;
+    font-weight: 600;
+  }
+}
+
+.viewSection {
+  animation: slideUp 0.4s ease-out;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+// ─── Schedule / Grades Tables ───
+.semesterBlock {
+  margin-bottom: 20px;
+  border-radius: $radius-lg;
+  overflow: hidden;
+  border: 1px solid $gray-200;
+}
+
+.semesterHeader {
+  padding: 15px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-hover);
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-main);
+
+  h4 { margin: 0; }
+
+  &.themeFall {
+    background: linear-gradient(135deg, $indigo, $blue-light);
+    color: #ffffff;
+    border-bottom: none;
+  }
+  &.themeSpring {
+    background: linear-gradient(135deg, $green-dark, $green);
+    color: #ffffff;
+    border-bottom: none;
+  }
+  &.themeSummer {
+    background: linear-gradient(135deg, $orange-text, $gold);
+    color: #ffffff;
+    border-bottom: none;
+  }
+}
+
+.sgpaBadge {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
+.courseTable {
+  width: 100%;
+  border-collapse: collapse;
+
+  thead tr {
+    background: $gray-50;
+    text-align: left;
+  }
+
+  th, td { padding: 12px; }
+
+  tbody tr {
+    border-bottom: 1px solid $gray-100;
+  }
+}
+
+.removeBtn {
+  color: #ef4444;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1em;
+}
+
+// ─── Grade Pills ───
+.gradePill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.85em;
+
+  &.gradeA { background: $green-light; color: $green-text; }
+  &.gradeB { background: $indigo-bg-light; color: $indigo-dark; }
+  &.gradeC { background: $orange-bg; color: $orange-text; }
+  &.gradeF { background: $red-light; color: $red-dark; }
+}
+
+.cgpaBadge {
+  background: $indigo;
+  color: $white;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 0.9em;
+}
+
+// ─── Advising ───
+.advisingLayout {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 25px;
+}
+
+.catalogList {
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.catalogItem {
+  border: 1px solid $gray-200;
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: $white;
+}
+
+.catalogMeta {
+  display: flex;
+  gap: 15px;
+  margin-top: 5px;
+  font-size: 0.85em;
+  color: $gray-500;
+
+  span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+}
+
+.seatBadge {
+  font-size: 0.75em;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+
+  &.seatOpen { background: $green-light; color: $green-text; }
+  &.seatFull { background: $red-light; color: $red-dark; }
+}
+
+.liveBadge {
+  color: #ef4444;
+  font-size: 0.8em;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+.slipCard {
+  position: sticky;
+  top: 100px;
+  padding: 0;
+  overflow: hidden;
+  background: $white;
+  border-radius: $radius-xl;
+  border: 1px solid $gray-200;
+  box-shadow: $shadow-sm;
+}
+
+.slipHeader {
+  background: $gray-50;
+  padding: 15px;
+  border-bottom: 1px solid $gray-200;
+
+  h3 { margin: 0; border: none; font-size: 1.1em; }
+}
+
+.slipList {
+  padding: 20px;
+  min-height: 150px;
+}
+
+.slipItem {
+  background: $gray-50;
+  border: 1px solid $gray-200;
+  padding: 10px 15px;
+  border-radius: $radius-md;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.slipFooter {
+  background: $gray-50;
+  padding: 20px;
+  border-top: 1px solid $gray-200;
+}
+
+.slipSummary {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.confirmBtn {
+  width: 100%;
+  background: $green;
+  color: $white;
+  border: none;
+  padding: 12px;
+  border-radius: $radius-md;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &:hover { background: $green-dark; }
+  &:disabled { background: $gray-400; cursor: not-allowed; }
+}
+
+.addBtn {
+  background: $indigo;
+  color: $white;
+  border: none;
+  padding: 6px 14px;
+  border-radius: $radius-sm;
+  cursor: pointer;
+  font-size: 0.9em;
+
+  &:disabled { background: $gray-200; color: $gray-400; cursor: not-allowed; }
+}
+
+.emptyState {
+  text-align: center;
+  padding: 30px;
+  color: $gray-400;
+
+  i { font-size: 2em; margin-bottom: 10px; }
+}
+
+// ─── Profile ───
+.profileCard {
+  padding: 0;
+  overflow: hidden;
+  border-radius: $radius-xl;
+  border: 1px solid $gray-200;
+  box-shadow: $shadow-sm;
+  background: $white;
+}
+
+.profileHeader {
+  background: linear-gradient(135deg, $indigo, $indigo-light);
+  padding: 40px;
+  color: $white;
+  display: flex;
+  align-items: center;
+  gap: 30px;
+}
+
+.profileAvatarXl {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: $white;
+  color: $indigo;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3em;
+  font-weight: 700;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+}
+
+.profileTitle {
+  h2 { margin: 0; font-size: 2.2em; }
+}
+
+.statusBadge {
+  background: $green-light;
+  color: $green-text;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
+.profileBody {
+  padding: 30px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+}
+
+.profileSection {
+  background: $gray-50;
+  border: 1px solid $gray-200;
+  border-radius: $radius-lg;
+  padding: 25px;
+
+  &.fullWidth {
+    grid-column: span 2;
+  }
+
+  h3 {
+    color: $gray-600;
+    font-size: 0.9em;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 0;
+    margin-bottom: 20px;
+    border-bottom: 1px solid $gray-200;
+    padding-bottom: 10px;
+  }
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+
+  &.fullWidth {
+    grid-column: span 2;
+  }
+}
+
+.infoItem {
+  label {
+    display: block;
+    font-size: 0.75em;
+    color: $gray-400;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  span {
+    font-size: 1.05em;
+    font-weight: 500;
+    color: $gray-800;
+  }
+}
+
+.advisorBox {
+  background: $indigo-bg;
+  border: 1px solid #c7d2fe;
+  padding: 20px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.advisorIcon {
+  width: 50px;
+  height: 50px;
+  background: $indigo;
+  color: $white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5em;
+}
+
+// ─── Financial ───
+.financialBox {
+  border-radius: $radius-lg;
+  padding: 25px;
+  border: 1px solid;
+
+  &.paid {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+  }
+
+  &.due {
+    background: $orange-bg;
+    border-color: $orange-border;
+  }
+}
+
+.financialHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  padding-bottom: 15px;
+  margin-bottom: 15px;
+}
+
+.paymentBadge {
+  display: inline-block;
+  padding: 5px 12px;
+  color: $white;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 0.9em;
+}
+
+// ─── Dropped State ───
+.droppedBanner {
+  text-align: center;
+  padding: 30px;
+  background: $red-bg;
+  border: 1px solid $red-border;
+  border-radius: 10px;
+  color: $red-text;
+
+  i {
+    font-size: 2em;
+    margin-bottom: 10px;
+  }
+}

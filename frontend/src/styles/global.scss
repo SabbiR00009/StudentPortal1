@@ -1,0 +1,83 @@
+@use 'variables' as *;
+
+:root {
+  --bg-primary: #f3f4f6;
+  --bg-card: #ffffff;
+  --bg-hover: #f9fafb;
+  --bg-inset: #f9fafb;
+  
+  --text-main: #1f2937;
+  --text-muted: #6b7280;
+  --text-light: #9ca3af;
+  
+  --border-color: #e5e7eb;
+  --border-light: #f3f4f6;
+  
+  --shadow-color: rgba(0, 0, 0, 0.05);
+  
+  --indigo-primary: #4f46e5;
+  --indigo-bg: #eef2ff;
+  --indigo-light: #818cf8;
+}
+
+[data-theme="dark"] {
+  --bg-primary: #0f172a;
+  --bg-card: #1e293b;
+  --bg-hover: #334155;
+  --bg-inset: #0f172a;
+
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-light: #64748b;
+
+  --border-color: #334155;
+  --border-light: #1e293b;
+  
+  --shadow-color: rgba(0, 0, 0, 0.5);
+
+  --indigo-primary: #6366f1;
+  --indigo-bg: rgba(99, 102, 241, 0.1);
+  --indigo-light: #818cf8;
+}
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: $font-body;
+  background-color: $gray-100;
+  color: $gray-800;
+  min-height: 100vh;
+}
+
+button {
+  font-family: inherit;
+}
+
+// ─── Animations ───
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+// ─── Utility Classes ───
+.fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+.slide-up {
+  animation: slideUp 0.4s ease-out;
+}

@@ -1,0 +1,30 @@
+@use '../../styles/variables' as *;
+
+.statCard {
+  background: $white;
+  padding: 25px;
+  border-radius: $radius-xl;
+  text-align: center;
+  border: 1px solid $gray-200;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: $shadow-lg;
+    border-color: $indigo;
+  }
+
+  .value {
+    color: $indigo;
+    font-size: 2.2em;
+    margin: 0;
+    font-weight: 700;
+  }
+
+  .label {
+    color: $gray-500;
+    margin: 5px 0 0 0;
+    font-size: 0.9em;
+  }
+}
