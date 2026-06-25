@@ -43,6 +43,9 @@ const getStudentFinancials = async (req, res) => {
     if (studentRows.length === 0) return res.status(404).json({ error: "Student not found" });
     const student = studentRows[0];
 
+    const { getActiveSemester } = require('../../helpers/semesterManager');
+    const activeSem = await getActiveSemester();
+
     const [creditsRows] = await pool.query(`
         SELECT SUM(c.credits) as totalCredits 
         FROM student_courses sc 
@@ -54,16 +57,28 @@ const getStudentFinancials = async (req, res) => {
     const currentCharges = (credits * 150) + 500;
     const previousDue = parseFloat(student.previous_due || 0);
     const totalPayable = currentCharges + previousDue;
+    
+    // Fetch transaction history
+    const [transactions] = await pool.query(`
+        SELECT amount, type, description, date 
+        FROM transactions 
+        WHERE student_id = ? 
+        ORDER BY date DESC
+    `, [req.params.id]);
 
     res.json({
+      activeSem,
       credits,
       current_charges: currentCharges,
       previous_due: previousDue,
       total_payable: totalPayable,
       status: student.payment_status,
-      dueDate: "2025-12-15"
+      dueDate: "2026-08-15",
+      transactions
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 };
 
 const dropCourse = async (req, res) => {

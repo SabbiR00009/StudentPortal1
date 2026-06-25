@@ -5,6 +5,18 @@ const { getActiveSemester } = require('../../helpers/semesterManager');
 const checkAccess = async (req, res) => {
   try {
     const studentId = req.params.studentId;
+    const activeSem = await getActiveSemester();
+
+    // Check if the student has an approved drop request for the current semester
+    const [drops] = await pool.query(
+      "SELECT id FROM semester_drop_requests WHERE student_id = ? AND semester = ? AND status = 'approved'",
+      [studentId, activeSem]
+    );
+
+    if (drops.length > 0) {
+      return res.json({ allowed: false, message: "Advising disabled: You have dropped the current semester.", credits: 0 });
+    }
+
     const [creditResult] = await pool.query(`
         SELECT SUM(c.credits) as total 
         FROM grades g JOIN courses c ON g.course_id = c.id 

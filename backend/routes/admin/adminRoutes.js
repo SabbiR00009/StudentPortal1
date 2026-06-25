@@ -38,6 +38,7 @@ router.get('/financials', financialsController.getFinancials);
 router.put('/financials/status', financialsController.updateFinancialStatus);
 
 const { checkAndTransitionSemester } = require('../../helpers/semesterManager');
+const dropRequestController = require('../../controllers/admin/dropRequestController');
 
 // Misc
 router.post('/admins', miscController.createAdmin);
@@ -46,6 +47,19 @@ router.post('/announcements', miscController.postAnnouncement);
 router.get('/slots', miscController.getSlots);
 router.post('/slots', miscController.createSlot);
 router.delete('/slots/:id', miscController.deleteSlot);
+
+// Drop Requests
+router.get('/drop-requests', dropRequestController.getAllRequests);
+router.put('/drop-requests/:id/status', dropRequestController.updateRequestStatus);
+
+const messageController = require('../../controllers/admin/messageController');
+
+// Messages & Overview
+router.get('/overview-stats', messageController.getOverviewStats);
+router.get('/messages', messageController.getAdminMessages);
+router.get('/messages/:messageId', messageController.getMessageThread);
+router.post('/messages/:messageId/reply', messageController.replyMessage);
+router.put('/messages/:messageId/status', messageController.updateMessageStatus);
 
 // System
 router.post('/system/trigger-semester-check', async (req, res) => {

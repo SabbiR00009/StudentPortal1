@@ -12,10 +12,14 @@ import SemestersView from './views/SemestersView';
 import SlotsView from './views/SlotsView';
 import AdminsView from './views/AdminsView';
 import AnnouncementsView from './views/AnnouncementsView';
+import DropRequestsView from './views/DropRequestsView';
+import MessagesView from './views/MessagesView';
 import styles from './AdminDashboard.module.scss';
 
 const NAV_ITEMS = [
   { view: 'overview', label: 'Overview', icon: 'fas fa-chart-pie' },
+  { view: 'messages', label: 'Messages', icon: 'fas fa-envelope' },
+  { view: 'drop-requests', label: 'Drop Requests', icon: 'fas fa-file-signature' },
   { view: 'students', label: 'Students', icon: 'fas fa-user-graduate' },
   { view: 'faculty', label: 'Faculty', icon: 'fas fa-chalkboard-teacher' },
   { view: 'courses', label: 'Courses', icon: 'fas fa-book' },
@@ -35,6 +39,8 @@ export default function AdminDashboard() {
   const renderView = () => {
     switch (activeView) {
       case 'overview': return <OverviewView onNavigate={setActiveView} />;
+      case 'messages': return <MessagesView />;
+      case 'drop-requests': return <DropRequestsView />;
       case 'students': return <StudentsView />;
       case 'faculty': return <FacultyView />;
       case 'courses': return <CoursesView />;

@@ -465,10 +465,10 @@
 .droppedBanner {
   text-align: center;
   padding: 30px;
-  background: $red-bg;
-  border: 1px solid $red-border;
+  background: var(--error-bg, rgba(239, 68, 68, 0.1));
+  border: 1px solid var(--error-border, rgba(239, 68, 68, 0.3));
   border-radius: 10px;
-  color: $red-text;
+  color: var(--error-color, #ef4444);
 
   i {
     font-size: 2em;

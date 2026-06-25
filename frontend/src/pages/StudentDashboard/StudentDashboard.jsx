@@ -9,53 +9,45 @@ import GradesView from './views/GradesView';
 import FinancialsView from './views/FinancialsView';
 import AdvisingView from './views/AdvisingView';
 import ProfileView from './views/ProfileView';
-import { getAnnouncements } from '../../api';
+import DropSemesterView from './views/DropSemesterView';
+import ContactView from './views/ContactView';
+import { getAnnouncements, request } from '../../api';
 import { useEffect } from 'react';
 import styles from './StudentDashboard.module.scss';
 
 const NAV_ITEMS = [
-  { view: 'home', label: 'Home', icon: 'fas fa-home' },
-  { view: 'schedule', label: 'Class Schedule', icon: 'fas fa-calendar-alt' },
-  { view: 'grades', label: 'Grade Report', icon: 'fas fa-graduation-cap' },
-  { view: 'advising', label: 'Advising Portal', icon: 'fas fa-edit' },
+  { view: 'overview', label: 'Overview', icon: 'fas fa-home' },
+  { view: 'grades', label: 'Grades & Schedule', icon: 'fas fa-graduation-cap' },
   { view: 'financials', label: 'Financials', icon: 'fas fa-file-invoice-dollar' },
-  { view: 'drop', label: 'Drop Semester', icon: 'fas fa-trash-alt', danger: true },
+  { view: 'advising', label: 'Advising', icon: 'fas fa-calendar-alt' },
+  { view: 'contact', label: 'Contact', icon: 'fas fa-envelope' },
+  { view: 'drop', label: 'Drop Semester', icon: 'fas fa-ban' }
 ];
 
 export default function StudentDashboard() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [activeView, setActiveView] = useState('home');
+  const [activeView, setActiveView] = useState('overview');
   const [announcements, setAnnouncements] = useState([]);
+  const [activeSem, setActiveSem] = useState(null);
 
   useEffect(() => {
     getAnnouncements().then(setAnnouncements).catch(console.error);
   }, []);
 
   const handleNavigate = (view) => {
-    if (view === 'drop') {
-      if (window.confirm('WARNING: Drop ENTIRE Semester? This removes ALL courses.')) {
-        import('../../api').then(({ dropSemester }) => {
-          dropSemester(user.dbId).then(() => {
-            alert('Semester Dropped.');
-            setActiveView('home');
-          }).catch(() => alert('Error'));
-        });
-      }
-      return;
-    }
     setActiveView(view);
   };
 
   const renderView = () => {
     switch (activeView) {
-      case 'home': return <HomeView onNavigate={setActiveView} />;
-      case 'schedule': return <ScheduleView />;
-      case 'grades': return <GradesView />;
-      case 'financials': return <FinancialsView />;
-      case 'advising': return <AdvisingView />;
-      case 'profile': return <ProfileView />;
-      default: return <HomeView onNavigate={setActiveView} />;
+      case 'overview': return <HomeView activeSem={activeSem} onNavigate={setActiveView} />;
+      case 'grades': return <GradesView activeSem={activeSem} />;
+      case 'financials': return <FinancialsView activeSem={activeSem} />;
+      case 'advising': return <AdvisingView activeSem={activeSem} />;
+      case 'contact': return <ContactView />;
+      case 'drop': return <DropSemesterView />;
+      default: return <HomeView activeSem={activeSem} />;
     }
   };
 

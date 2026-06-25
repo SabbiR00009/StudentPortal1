@@ -1,9 +1,14 @@
-const API_URL = 'http://localhost:3000/api';
+export const API_URL = 'http://localhost:3000/api';
 
-async function request(endpoint, options = {}) {
+export const request = async (endpoint, options = {}) => {
   const url = `${API_URL}${endpoint}`;
+  const token = localStorage.getItem('token');
   const config = {
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { Authorization: `Bearer ${token}` }),
+      ...options.headers,
+    },
     ...options,
   };
 
@@ -35,6 +40,10 @@ export const dropCourse = (studentId, courseId) =>
   request('/students/drop-course', { method: 'POST', body: { studentId, courseId } });
 export const dropSemester = (studentId) =>
   request('/students/drop-semester', { method: 'POST', body: { studentId } });
+export const getDropRequest = (studentId) =>
+  request(`/students/${studentId}/drop-request`);
+export const submitDropRequest = (studentId, reason) =>
+  request('/students/drop-request', { method: 'POST', body: { studentId, reason } });
 
 // ─── Advising ───
 export const checkAdvisingAccess = (studentId) =>
@@ -91,10 +100,29 @@ export const updateFinancialStatus = (studentId, status) =>
 
 export const createAdmin = (data) =>
   request('/admin/admins', { method: 'POST', body: data });
-export const createSemester = (data) =>
-  request('/admin/semesters', { method: 'POST', body: data });
-export const postAnnouncement = (data) =>
-  request('/admin/announcements', { method: 'POST', body: data });
+export const createSemester = (semesterData) =>
+  request('/admin/semesters', { method: 'POST', body: semesterData });
+export const postAnnouncement = (announcementData) =>
+  request('/admin/announcements', { method: 'POST', body: announcementData });
+
+// ─── Admin Drop Requests ───
+export const getAdminDropRequests = () =>
+  request('/admin/drop-requests');
+export const updateDropRequestStatus = (id, status, adminResponse) =>
+  request(`/admin/drop-requests/${id}/status`, { method: 'PUT', body: { status, adminResponse } });
+
+// ─── Messaging ───
+export const getStudentMessages = () => request('/student/messages');
+export const getFacultyContacts = () => request('/student/messages/faculty-contacts');
+export const sendStudentMessage = (data) => request('/student/messages', { method: 'POST', body: data });
+export const getMessageThread = (id) => request(`/student/messages/${id}`);
+export const replyToMessage = (id, data) => request(`/student/messages/${id}/reply`, { method: 'POST', body: data });
+
+export const getAdminOverviewStats = () => request('/admin/overview-stats');
+export const getAdminMessages = () => request('/admin/messages');
+export const getAdminMessageThread = (id) => request(`/admin/messages/${id}`);
+export const replyToAdminMessage = (id, data) => request(`/admin/messages/${id}/reply`, { method: 'POST', body: data });
+export const updateMessageStatus = (id, status) => request(`/admin/messages/${id}/status`, { method: 'PUT', body: { status } });
 
 export const getAdminSlots = () => request('/admin/slots');
 export const createSlot = (data) =>
