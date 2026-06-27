@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { getMe, logoutUser } from '../api';
 
 const AuthContext = createContext(null);
 
@@ -8,51 +9,51 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for stored sessions on mount
-    const storedStudent = localStorage.getItem('san_student');
-    const storedAdmin = sessionStorage.getItem('adminUser');
-    const storedFaculty = sessionStorage.getItem('facultyUser');
-
-    if (storedStudent) {
-      const student = JSON.parse(storedStudent);
-      student.dbId = student.id || student._id;
-      setUser(student);
-      setUserType('student');
-    } else if (storedAdmin) {
-      setUser(JSON.parse(storedAdmin));
-      setUserType('admin');
-    } else if (storedFaculty) {
-      setUser(JSON.parse(storedFaculty));
-      setUserType('faculty');
-    }
-
-    setLoading(false);
+    // Check for stored session via backend cookie
+    getMe()
+      .then((data) => {
+        if (data.success && data.user) {
+          const u = { ...data.user };
+          u.dbId = u.id || u._id;
+          setUser(u);
+          setUserType(data.userType);
+        } else {
+          setUser(null);
+          setUserType(null);
+        }
+      })
+      .catch(() => {
+        setUser(null);
+        setUserType(null);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
   const loginStudent = (studentData) => {
     const student = { ...studentData };
     student.dbId = student.id || student._id;
-    localStorage.setItem('san_student', JSON.stringify(student));
     setUser(student);
     setUserType('student');
   };
 
   const loginAdmin = (adminData) => {
-    sessionStorage.setItem('adminUser', JSON.stringify(adminData));
     setUser(adminData);
     setUserType('admin');
   };
 
   const loginFaculty = (facultyData) => {
-    sessionStorage.setItem('facultyUser', JSON.stringify(facultyData));
     setUser(facultyData);
     setUserType('faculty');
   };
 
-  const logout = () => {
-    localStorage.removeItem('san_student');
-    sessionStorage.removeItem('adminUser');
-    sessionStorage.removeItem('facultyUser');
+  const logout = async () => {
+    try {
+      await logoutUser();
+    } catch (e) {
+      console.error("Logout error", e);
+    }
     setUser(null);
     setUserType(null);
   };

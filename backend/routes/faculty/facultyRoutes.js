@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const facultyController = require('../../controllers/faculty/facultyController');
+const { verifyToken, isFaculty } = require('../../middleware/authMiddleware');
+
+router.use(verifyToken, isFaculty);
 
 router.get('/:email/courses', facultyController.getFacultyCourses);
 router.get('/:email/advisees', facultyController.getAdvisees);

@@ -5,6 +5,9 @@ const dropSemesterController = require('../../controllers/student/dropSemesterCo
 const messageController = require('../../controllers/student/messageController');
 const advisingRoutes = require('./advisingRoutes');
 const { getActiveSemester } = require('../../helpers/semesterManager');
+const { verifyToken, isStudent } = require('../../middleware/authMiddleware');
+
+router.use(verifyToken, isStudent);
 
 router.use('/advising', advisingRoutes);
 

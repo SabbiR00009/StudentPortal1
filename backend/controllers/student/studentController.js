@@ -2,7 +2,8 @@ const pool = require('../../db');
 
 const getStudentById = async (req, res) => {
   try {
-    const [students] = await pool.query("SELECT * FROM students WHERE id = ? OR student_id = ?", [req.params.id, req.params.id]);
+    const studentId = req.user.dbId;
+    const [students] = await pool.query("SELECT * FROM students WHERE id = ?", [studentId]);
     if (students.length > 0) {
       const { password, ...d } = students[0];
       res.json(d);
@@ -19,7 +20,7 @@ const getStudentCourses = async (req, res) => {
         LEFT JOIN grades g ON sc.student_id = g.student_id AND sc.course_id = g.course_id 
         WHERE sc.student_id = ? 
         ORDER BY CASE WHEN sc.status = 'enrolled' THEN 0 ELSE 1 END, c.semester DESC
-    `, [req.params.id]);
+    `, [req.user.dbId]);
     res.json(courses);
   } catch (e) { res.status(500).json({ error: e.message }); }
 };
@@ -32,7 +33,7 @@ const getStudentGrades = async (req, res) => {
         JOIN courses c ON g.course_id = c.id 
         WHERE g.student_id = ? 
         ORDER BY g.semester DESC
-    `, [req.params.id]);
+    `, [req.user.dbId]);
     res.json(grades);
   } catch (e) { res.status(500).json({ error: e.message }); }
 };
@@ -51,7 +52,7 @@ const getStudentFinancials = async (req, res) => {
         FROM student_courses sc 
         JOIN courses c ON sc.course_id = c.id 
         WHERE sc.student_id = ? AND sc.status = 'enrolled'
-    `, [req.params.id]);
+    `, [studentId]);
 
     const credits = creditsRows[0].totalCredits || 0;
     const currentCharges = (credits * 150) + 500;
@@ -64,7 +65,7 @@ const getStudentFinancials = async (req, res) => {
         FROM transactions 
         WHERE student_id = ? 
         ORDER BY date DESC
-    `, [req.params.id]);
+    `, [studentId]);
 
     const [settingsRows] = await pool.query("SELECT setting_value FROM system_settings WHERE setting_key = 'payment_due_date'");
     const dueDate = settingsRows.length > 0 ? settingsRows[0].setting_value : "Not Set";
@@ -86,7 +87,8 @@ const getStudentFinancials = async (req, res) => {
 
 const dropCourse = async (req, res) => {
   try {
-    const { studentId, courseId } = req.body;
+    const { courseId } = req.body;
+    const studentId = req.user.dbId;
     const { getActiveSemester } = require('../../helpers/semesterManager');
     const activeSem = await getActiveSemester();
 
@@ -146,7 +148,7 @@ const dropSemester = async (req, res) => {
       JOIN courses c ON sc.course_id = c.id
       SET sc.status = 'dropped' 
       WHERE sc.student_id = ? AND sc.status = 'enrolled' AND c.semester = ?
-    `, [req.body.studentId, activeSem]);
+    `, [req.user.dbId, activeSem]);
     
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }

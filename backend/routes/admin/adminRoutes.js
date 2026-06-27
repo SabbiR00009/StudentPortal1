@@ -4,8 +4,11 @@ const studentController = require('../../controllers/admin/studentController');
 const courseController = require('../../controllers/admin/courseController');
 const financialsController = require('../../controllers/admin/financialsController');
 const miscController = require('../../controllers/admin/miscController');
+const { verifyToken, isAdmin } = require('../../middleware/authMiddleware');
 
 const router = express.Router();
+
+router.use(verifyToken, isAdmin);
 
 // Faculty
 router.get('/faculty', facultyController.getFaculty);

@@ -4,7 +4,7 @@ const { getActiveSemester } = require('../../helpers/semesterManager');
 
 const checkAccess = async (req, res) => {
   try {
-    const studentId = req.params.studentId;
+    const studentId = req.user.dbId;
     const activeSem = await getActiveSemester();
 
     // Check if the student has an approved drop request for the current semester
@@ -64,7 +64,8 @@ const getCourses = async (req, res) => {
 
 const validateSlip = async (req, res) => {
   try {
-    const { studentId, courseId, slipIds } = req.body;
+    const { courseId, slipIds } = req.body;
+    const studentId = req.user.dbId;
     const activeSem = await getActiveSemester();
 
     const [newCourses] = await pool.query("SELECT * FROM courses WHERE id = ?", [courseId]);
@@ -113,7 +114,8 @@ const validateSlip = async (req, res) => {
 };
 
 const confirmSlip = async (req, res) => {
-  const { studentId, courseIds } = req.body;
+  const { courseIds } = req.body;
+  const studentId = req.user.dbId;
   const activeSem = await getActiveSemester();
 
   try {

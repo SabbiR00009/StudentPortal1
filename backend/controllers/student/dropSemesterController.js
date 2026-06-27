@@ -3,7 +3,7 @@ const { getActiveSemester } = require('../../helpers/semesterManager');
 
 const getDropRequest = async (req, res) => {
   try {
-    const studentId = req.params.studentId;
+    const studentId = req.user.dbId;
     const activeSem = await getActiveSemester();
 
     const [requests] = await pool.query(
@@ -23,7 +23,8 @@ const getDropRequest = async (req, res) => {
 
 const submitDropRequest = async (req, res) => {
   try {
-    const { studentId, reason } = req.body;
+    const { reason } = req.body;
+    const studentId = req.user.dbId;
     const activeSem = await getActiveSemester();
 
     if (!reason || reason.trim() === "") {

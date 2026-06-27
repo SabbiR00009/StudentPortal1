@@ -2,13 +2,12 @@ export const API_URL = 'http://localhost:3000/api';
 
 export const request = async (endpoint, options = {}) => {
   const url = `${API_URL}${endpoint}`;
-  const token = localStorage.getItem('token');
   const config = {
     headers: {
       'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
       ...options.headers,
     },
+    credentials: 'include',
     ...options,
   };
 
@@ -29,6 +28,10 @@ export const request = async (endpoint, options = {}) => {
 // ─── Auth ───
 export const login = (id, password, role) =>
   request('/login', { method: 'POST', body: { id, password, role } });
+export const logoutUser = () =>
+  request('/logout', { method: 'POST' });
+export const getMe = () =>
+  request('/me');
 
 // ─── Student APIs ───
 export const getStudent = (id) => request(`/students/${id}`);

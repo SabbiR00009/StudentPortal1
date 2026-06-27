@@ -2,6 +2,7 @@ const pool = require('../../db');
 
 const getFacultyCourses = async (req, res) => {
   try {
+    if (req.params.email !== req.user.email) return res.status(403).json({ error: "Forbidden: Unauthorized access" });
     const [courses] = await pool.query("SELECT * FROM courses WHERE instructor_email = ?", [req.params.email]);
 
     const enriched = await Promise.all(courses.map(async (c) => {
@@ -18,6 +19,7 @@ const getFacultyCourses = async (req, res) => {
 
 const getAdvisees = async (req, res) => {
   try {
+    if (req.params.email !== req.user.email) return res.status(403).json({ error: "Forbidden: Unauthorized access" });
     const [faculty] = await pool.query("SELECT id FROM faculty WHERE email = ?", [req.params.email]);
     if (faculty.length === 0) return res.json([]);
 
