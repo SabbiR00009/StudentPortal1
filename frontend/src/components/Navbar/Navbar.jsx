@@ -3,14 +3,13 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import styles from './Navbar.module.scss';
 
-export default function Navbar({ title, icon, avatarBg, onLogoClick }) {
+export default function Navbar({ title, icon, avatarBg, onLogoClick, onProfileClick }) {
   const { user, userType, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const handleLogout = () => {
     logout();
-    navigate('/');
   };
 
   const avatarUrl = user?.avatar ||
@@ -27,10 +26,10 @@ export default function Navbar({ title, icon, avatarBg, onLogoClick }) {
         <button onClick={toggleTheme} className={styles.themeToggle} aria-label="Toggle Theme">
           {theme === 'dark' ? <i className="fas fa-sun"></i> : <i className="fas fa-moon"></i>}
         </button>
-        <div className={styles.userAvatar}>
+        <div className={styles.userAvatar} onClick={onProfileClick} style={{ cursor: onProfileClick ? 'pointer' : 'default' }}>
           <img src={avatarUrl} alt="Profile" />
         </div>
-        <div className={styles.userMeta}>
+        <div className={styles.userMeta} onClick={onProfileClick} style={{ cursor: onProfileClick ? 'pointer' : 'default' }}>
           <span className={styles.userName}>{user?.name || 'User'}</span>
           <span className={styles.userId}>
             {userType === 'student' ? `ID: ${user?.student_id}` :

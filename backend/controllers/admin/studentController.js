@@ -1,4 +1,5 @@
 const pool = require('../../db');
+const bcrypt = require('bcryptjs');
 const { checkTimeConflict } = require('../../helpers/conflictChecker');
 
 const getStudents = async (req, res) => {
@@ -73,6 +74,7 @@ const createStudent = async (req, res) => {
     }
 
     // 3. Insert into Database
+    const hashedPassword = bcrypt.hashSync('123456', 10);
     await pool.query(
       `INSERT INTO students (
           student_id, unique_id, password, name, email, phone, 
@@ -80,9 +82,9 @@ const createStudent = async (req, res) => {
           dob, blood_group, nid, marital_status, 
           present_address, permanent_address, advisor_name, advisor_email,
           payment_status, previous_due
-      ) VALUES (?, ?, '123456', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Due', 0)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Due', 0)`,
       [
-        finalId, uniqueId, s.name, finalEmail, s.phone,
+        finalId, uniqueId, hashedPassword, s.name, finalEmail, s.phone,
         s.program || `B.Sc in ${s.department}`, s.department, s.admitted_semester, admittedYear, "Fall-2025",
         s.dob, s.blood_group, s.nid, s.marital_status,
         s.present_address, s.permanent_address, s.advisor_name, s.advisor_email

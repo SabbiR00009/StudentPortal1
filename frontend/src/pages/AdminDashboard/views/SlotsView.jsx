@@ -44,6 +44,15 @@ export default function SlotsView() {
   const set = (f, v) => setForm(p => ({ ...p, [f]: v }));
   const setDrop = (f, v) => setDropForm(p => ({ ...p, [f]: v }));
 
+  const getStatus = (start, end) => {
+    const now = new Date();
+    const s = new Date(start);
+    const e = new Date(end);
+    if (now < s) return <span style={{color: '#d97706'}}>Upcoming</span>;
+    if (now >= s && now <= e) return <span style={{color: 'green'}}>Active</span>;
+    return <span style={{color: '#dc2626'}}>Ended</span>;
+  };
+
   return (
     <>
       <div className={styles.pageTitle}><h2><i className="fas fa-clock"></i> System Timeframes</h2></div>
@@ -106,12 +115,17 @@ export default function SlotsView() {
       </div>
       {slots.length > 0 && (
         <div className={styles.card}>
-          <h3>Active Slots</h3>
+          <h3>Advising Slot History</h3>
           <table className={styles.dataTable}>
-            <thead><tr><th>Credits Range</th><th>Start</th><th>End</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Credits Range</th><th>Start</th><th>End</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>{slots.map(s => (
-              <tr key={s.id}><td>{s.min_credits}-{s.max_credits}</td><td>{new Date(s.start_time).toLocaleString()}</td><td>{new Date(s.end_time).toLocaleString()}</td>
-                <td><button className={styles.btnDanger} onClick={() => handleDelete(s.id)}><i className="fas fa-trash"></i></button></td></tr>
+              <tr key={s.id}>
+                <td>{s.min_credits}-{s.max_credits}</td>
+                <td>{new Date(s.start_time).toLocaleString()}</td>
+                <td>{new Date(s.end_time).toLocaleString()}</td>
+                <td>{getStatus(s.start_time, s.end_time)}</td>
+                <td><button className={styles.btnDanger} onClick={() => handleDelete(s.id)}><i className="fas fa-trash"></i></button></td>
+              </tr>
             ))}</tbody>
           </table>
         </div>

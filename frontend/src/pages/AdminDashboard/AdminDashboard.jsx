@@ -11,13 +11,16 @@ import SlotsView from './views/SlotsView';
 import AdminsView from './views/AdminsView';
 import AnnouncementsView from './views/AnnouncementsView';
 import DropRequestsView from './views/DropRequestsView';
+import ProfileView from './views/ProfileView';
 import MessagesView from './views/MessagesView';
+import PasswordResetRequestsView from './views/PasswordResetRequestsView';
 import styles from './AdminDashboard.module.scss';
 
 const NAV_ITEMS = [
   { view: 'overview', label: 'Overview', icon: 'fas fa-chart-pie' },
   { view: 'messages', label: 'Messages', icon: 'fas fa-envelope' },
   { view: 'drop-requests', label: 'Drop Requests', icon: 'fas fa-file-signature' },
+  { view: 'password-resets', label: 'Password Resets', icon: 'fas fa-key' },
   { view: 'students', label: 'Students', icon: 'fas fa-user-graduate' },
   { view: 'faculty', label: 'Faculty', icon: 'fas fa-chalkboard-teacher' },
   { view: 'courses', label: 'Courses', icon: 'fas fa-book' },
@@ -37,6 +40,8 @@ export default function AdminDashboard() {
       case 'overview': return <OverviewView onNavigate={setActiveView} />;
       case 'messages': return <MessagesView />;
       case 'drop-requests': return <DropRequestsView />;
+      case 'password-resets': return <PasswordResetRequestsView />;
+      case 'profile': return <ProfileView />;
       case 'students': return <StudentsView />;
       case 'faculty': return <FacultyView />;
       case 'courses': return <CoursesView />;
@@ -55,6 +60,7 @@ export default function AdminDashboard() {
         icon="fas fa-shield-alt"
         avatarBg="dc2626"
         onLogoClick={() => setActiveView('overview')}
+        onProfileClick={() => setActiveView('profile')}
       />
       <div className={styles.content}>
         <div className={styles.sidebar}>
@@ -71,7 +77,7 @@ export default function AdminDashboard() {
             ))}
             <button
               className={`${styles.navBtn} ${styles.danger}`}
-              onClick={() => { logout(); navigate('/'); }}
+              onClick={() => { logout(); }}
             >
               <i className="fas fa-sign-out-alt"></i> Logout
             </button>

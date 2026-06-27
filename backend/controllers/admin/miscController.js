@@ -1,9 +1,11 @@
 const pool = require('../../db');
+const bcrypt = require('bcryptjs');
 
 const createAdmin = async (req, res) => {
   try {
     const { name, email, password } = req.body;
-    await pool.query("INSERT INTO admins (name, email, password) VALUES (?, ?, ?)", [name, email, password]);
+    const hashedPassword = bcrypt.hashSync(password, 10);
+    await pool.query("INSERT INTO admins (name, email, password) VALUES (?, ?, ?)", [name, email, hashedPassword]);
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -34,8 +36,16 @@ const getSlots = async (req, res) => {
 
 const createSlot = async (req, res) => {
   try {
-    const { min, max, start, end } = req.body;
-    // format to mysql datetime string if needed, assuming the req.body strings are valid
+    const min = req.body.min_credits || req.body.min || 0;
+    const max = req.body.max_credits || req.body.max || 0;
+    const start = req.body.start_time || req.body.start;
+    const end = req.body.end_time || req.body.end;
+    
+    if (!start || !end) {
+      return res.status(400).json({ error: "Start and end times are required." });
+    }
+
+    // format to mysql datetime string if needed
     await pool.query(
       "INSERT INTO advising_slots (min_credits, max_credits, start_time, end_time) VALUES (?, ?, ?, ?)",
       [min, max, start.replace('T', ' '), end.replace('T', ' ')]

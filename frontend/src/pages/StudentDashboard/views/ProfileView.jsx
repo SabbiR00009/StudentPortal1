@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { getStudent, getStudentGrades } from '../../../api';
+import ChangePassword from '../../../components/ChangePassword/ChangePassword';
 import styles from '../StudentDashboard.module.scss';
 
 export default function ProfileView() {
@@ -90,6 +91,7 @@ export default function ProfileView() {
           </div>
         </div>
       </div>
+      <ChangePassword />
     </div>
   );
 }

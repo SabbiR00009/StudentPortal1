@@ -276,6 +276,11 @@ export default function AdvisingView() {
           </div>
         ) : (
           <>
+            <div style={{ background: '#ecfdf5', border: '1px solid #10b981', color: '#047857', padding: '15px', borderRadius: '8px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <i className="fas fa-check-circle" style={{ fontSize: '1.2em' }}></i>
+              <strong>Advising Window is Open!</strong> You can now select your courses for the upcoming semester.
+            </div>
+
             <div style={{ display: "flex", gap: "10px", marginBottom: "15px" }}>
               <button 
                 onClick={() => setActiveTab("All")} 

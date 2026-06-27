@@ -57,6 +57,11 @@ router.put('/settings', miscController.updateSettings);
 router.get('/drop-requests', dropRequestController.getAllRequests);
 router.put('/drop-requests/:id/status', dropRequestController.updateRequestStatus);
 
+// Password Reset Requests (Admin)
+const passwordResetController = require('../../controllers/admin/passwordResetController');
+router.get('/password-reset-requests', passwordResetController.getAllRequests);
+router.put('/password-reset-requests/:id/status', passwordResetController.updateRequestStatus);
+
 const messageController = require('../../controllers/admin/messageController');
 
 // Messages & Overview

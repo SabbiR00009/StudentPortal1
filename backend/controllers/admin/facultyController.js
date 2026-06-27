@@ -1,4 +1,5 @@
 const pool = require('../../db');
+const bcrypt = require('bcryptjs');
 
 const getFaculty = async (req, res) => {
   try {
@@ -53,9 +54,10 @@ const createFaculty = async (req, res) => {
       emailIdx++;
     }
 
+    const hashedPassword = bcrypt.hashSync('123456', 10);
     await pool.query(
-      "INSERT INTO faculty (faculty_id, name, email, department, designation, phone, dob, password) VALUES (?, ?, ?, ?, ?, ?, ?, '123456')",
-      [finalId, name, finalEmail, department, designation, phone, dob]
+      "INSERT INTO faculty (faculty_id, name, email, department, designation, phone, dob, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      [finalId, name, finalEmail, department, designation, phone, dob, hashedPassword]
     );
 
     res.json({ success: true, message: `Faculty Added! ID: ${finalId}` });

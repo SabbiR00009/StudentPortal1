@@ -32,6 +32,8 @@ export const logoutUser = () =>
   request('/logout', { method: 'POST' });
 export const getMe = () =>
   request('/me');
+export const changePassword = (currentPassword, newPassword) =>
+  request('/change-password', { method: 'POST', body: { currentPassword, newPassword } });
 
 // ─── Student APIs ───
 export const getStudent = (id) => request(`/students/${id}`);
@@ -150,3 +152,11 @@ export const getFacultyStudentProfile = (id) => request(`/faculty/student-profil
 export const getCourseStudents = (courseId) => request(`/faculty/course/${courseId}/students`);
 export const submitFacultyGrade = (data) =>
   request('/faculty/grade', { method: 'POST', body: data });
+
+// ─── Password Reset ───
+export const submitPasswordResetRequest = (student_id, email, dob) =>
+  request('/password-reset-request', { method: 'POST', body: { student_id, email, dob } });
+export const getAdminPasswordResetRequests = () =>
+  request('/admin/password-reset-requests');
+export const updatePasswordResetRequestStatus = (id, status, admin_note) =>
+  request(`/admin/password-reset-requests/${id}/status`, { method: 'PUT', body: { status, admin_note } });

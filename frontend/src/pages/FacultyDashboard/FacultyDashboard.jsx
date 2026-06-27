@@ -11,7 +11,6 @@ import styles from './FacultyDashboard.module.scss';
 const NAV_ITEMS = [
   { view: 'overview', label: 'My Courses', icon: 'fas fa-book' },
   { view: 'advising', label: 'Advising', icon: 'fas fa-user-check' },
-  { view: 'profile', label: 'Profile', icon: 'fas fa-id-card' },
 ];
 
 export default function FacultyDashboard() {
@@ -37,7 +36,7 @@ export default function FacultyDashboard() {
 
   return (
     <div className={styles.dashboard}>
-      <Navbar title="Faculty Portal" icon="fas fa-chalkboard-teacher" avatarBg="d97706" onLogoClick={() => setActiveView('overview')} />
+      <Navbar title="Faculty Portal" icon="fas fa-chalkboard-teacher" avatarBg="d97706" onLogoClick={() => setActiveView('overview')} onProfileClick={() => setActiveView('profile')} />
       <div className={styles.content}>
         <div className={styles.sidebar}>
           <h3>Faculty Menu</h3>
@@ -47,7 +46,7 @@ export default function FacultyDashboard() {
                 <i className={item.icon}></i> {item.label}
               </button>
             ))}
-            <button className={`${styles.navBtn} ${styles.danger}`} onClick={() => { logout(); navigate('/'); }}>
+            <button className={`${styles.navBtn} ${styles.danger}`} onClick={() => { logout(); }}>
               <i className="fas fa-sign-out-alt"></i> Logout
             </button>
           </div>

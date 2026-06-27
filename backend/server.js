@@ -40,6 +40,10 @@ app.use('/api/students', studentRoutes);
 app.use('/api/advising', advisingRoutes);
 app.use('/api/faculty', facultyRoutes);
 
+// Public: Password Reset Request (no auth required)
+const { submitRequest: submitPasswordReset } = require('./controllers/admin/passwordResetController');
+app.post('/api/password-reset-request', submitPasswordReset);
+
 // Shared Announcement Route
 app.get("/api/announcements", async (req, res) => {
   try {

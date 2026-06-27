@@ -64,7 +64,7 @@ export default function HomeView({ onNavigate }) {
   return (
     <>
       <div className={styles.welcomeSection}>
-        <h2>Welcome back, {user.name?.split(' ')[0]}!</h2>
+        <h2>Welcome back, {user.name}!</h2>
         <p>Here is your academic performance overview.</p>
       </div>
 

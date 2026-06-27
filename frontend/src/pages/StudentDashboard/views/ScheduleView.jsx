@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
-import { getStudentCourses, dropCourse as apiDropCourse, getActiveSemester } from '../../../api';
+import { getStudentCourses, dropCourse as apiDropCourse, getActiveSemester, getDropPeriods } from '../../../api';
 import styles from '../StudentDashboard.module.scss';
 
 function formatSchedule(c) {
@@ -15,6 +15,7 @@ export default function ScheduleView() {
   const [history, setHistory] = useState({});
   const [enrolledCredits, setEnrolledCredits] = useState(0);
   const [activeSem, setActiveSem] = useState('Current');
+  const [dropWindowActive, setDropWindowActive] = useState(false);
 
   useEffect(() => { loadSchedule(); }, []);
 
@@ -38,6 +39,13 @@ export default function ScheduleView() {
         grouped[sem].push(c);
       });
       setHistory(grouped);
+
+      const periods = await getDropPeriods();
+      const now = new Date();
+      const active2 = Array.isArray(periods) && periods.some(p =>
+        now >= new Date(p.start_date) && now <= new Date(p.end_date)
+      );
+      setDropWindowActive(active2);
     } catch (e) { console.error(e); }
   };
 
@@ -76,7 +84,16 @@ export default function ScheduleView() {
                 <tr key={c.id}>
                   <td>{c.code}</td><td>{c.name}</td><td>{c.credits}</td>
                   <td>{formatSchedule(c)}</td><td>{c.room_number || 'TBA'}</td>
-                  <td><button className={styles.removeBtn} onClick={() => handleDrop(c.id)}><i className="fas fa-minus-circle"></i></button></td>
+                  <td>
+                    <button
+                      className={styles.removeBtn}
+                      onClick={() => dropWindowActive ? handleDrop(c.id) : alert('Course drop window is currently closed.')}
+                      title={dropWindowActive ? 'Drop Course' : 'Drop window closed'}
+                      style={{ opacity: dropWindowActive ? 1 : 0.5 }}
+                    >
+                      <i className={dropWindowActive ? 'fas fa-minus-circle' : 'fas fa-ban'}></i>
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
