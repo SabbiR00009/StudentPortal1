@@ -6,9 +6,7 @@ import OverviewView from './views/OverviewView';
 import StudentsView from './views/StudentsView';
 import FacultyView from './views/FacultyView';
 import CoursesView from './views/CoursesView';
-import GradesView from './views/GradesView';
 import FinancialsView from './views/FinancialsView';
-import SemestersView from './views/SemestersView';
 import SlotsView from './views/SlotsView';
 import AdminsView from './views/AdminsView';
 import AnnouncementsView from './views/AnnouncementsView';
@@ -23,9 +21,7 @@ const NAV_ITEMS = [
   { view: 'students', label: 'Students', icon: 'fas fa-user-graduate' },
   { view: 'faculty', label: 'Faculty', icon: 'fas fa-chalkboard-teacher' },
   { view: 'courses', label: 'Courses', icon: 'fas fa-book' },
-  { view: 'grades', label: 'Grades', icon: 'fas fa-star-half-alt' },
   { view: 'financials', label: 'Financials', icon: 'fas fa-dollar-sign' },
-  { view: 'semesters', label: 'Semesters', icon: 'fas fa-calendar' },
   { view: 'slots', label: 'Advising Slots', icon: 'fas fa-clock' },
   { view: 'admins', label: 'Manage Admins', icon: 'fas fa-shield-alt' },
   { view: 'announcements', label: 'Announcements', icon: 'fas fa-bullhorn' },
@@ -44,9 +40,7 @@ export default function AdminDashboard() {
       case 'students': return <StudentsView />;
       case 'faculty': return <FacultyView />;
       case 'courses': return <CoursesView />;
-      case 'grades': return <GradesView />;
       case 'financials': return <FinancialsView />;
-      case 'semesters': return <SemestersView />;
       case 'slots': return <SlotsView />;
       case 'admins': return <AdminsView />;
       case 'announcements': return <AnnouncementsView />;

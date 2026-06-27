@@ -73,18 +73,18 @@ export const adminDropStudent = (studentDbId, type, targetId) =>
   request('/admin/student/drop', { method: 'POST', body: { studentDbId, type, targetId } });
 
 export const getAdminFaculty = () => request('/admin/faculty');
-export const createFaculty = (data) =>
-  request('/admin/faculty', { method: 'POST', body: data });
-export const deleteFaculty = (id) =>
-  request(`/admin/faculty/${id}`, { method: 'DELETE' });
+export const createFaculty = (data) => request('/admin/faculty', { method: 'POST', body: data });
+export const updateFaculty = (id, data) => request(`/admin/faculty/${id}`, { method: 'PUT', body: data });
+export const getAdminFacultyCourses = (id) => request(`/admin/faculty/${id}/courses`);
+export const deleteFaculty = (id) => request(`/admin/faculty/${id}`, { method: 'DELETE' });
 
 export const getAdminCourses = () => request('/admin/courses');
 export const createCourse = (data) =>
   request('/admin/courses', { method: 'POST', body: data });
 export const deleteCourse = (id) =>
   request(`/admin/courses/${id}`, { method: 'DELETE' });
-export const updateCourseCapacity = (id, max_students) =>
-  request(`/admin/courses/${id}/capacity`, { method: 'PUT', body: { max_students } });
+export const updateCourse = (id, data) =>
+  request(`/admin/courses/${id}`, { method: 'PUT', body: data });
 export const getScheduleConfig = () => request('/admin/config/schedules');
 
 export const searchStudentForGrades = (q) =>
@@ -129,6 +129,16 @@ export const createSlot = (data) =>
   request('/admin/slots', { method: 'POST', body: data });
 export const deleteSlot = (id) =>
   request(`/admin/slots/${id}`, { method: 'DELETE' });
+
+export const getDropPeriods = () => request('/admin/drop-periods');
+export const createDropPeriod = (data) =>
+  request('/admin/drop-periods', { method: 'POST', body: data });
+export const deleteDropPeriod = (id) =>
+  request(`/admin/drop-periods/${id}`, { method: 'DELETE' });
+
+export const getSettings = () => request('/admin/settings');
+export const updateSettings = (key, value) =>
+  request('/admin/settings', { method: 'PUT', body: { key, value } });
 
 // ─── Faculty APIs ───
 export const getFacultyCourses = (email) => request(`/faculty/${email}/courses`);

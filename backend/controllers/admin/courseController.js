@@ -32,7 +32,7 @@ const createCourse = async (req, res) => {
     );
 
     if (exists.length > 0) {
-      return res.json({ success: false, error: `Duplicate: ${code} Section ${section} already exists.` });
+      return res.status(400).json({ error: `Duplicate: ${code} Section ${section} already exists.` });
     }
 
     await pool.query(
@@ -54,11 +54,14 @@ const createCourse = async (req, res) => {
   }
 };
 
-const updateCapacity = async (req, res) => {
+const updateCourse = async (req, res) => {
   try {
-    const { max_students } = req.body;
-    await pool.query("UPDATE courses SET max_students = ? WHERE id = ?", [max_students, req.params.id]);
-    res.json({ success: true, message: "Capacity Updated" });
+    const { max_students, room_number, instructor, instructor_email } = req.body;
+    await pool.query(
+      "UPDATE courses SET max_students = ?, room_number = ?, instructor = ?, instructor_email = ? WHERE id = ?", 
+      [max_students, room_number, instructor, instructor_email, req.params.id]
+    );
+    res.json({ success: true, message: "Course Updated" });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -77,6 +80,6 @@ module.exports = {
   getSchedules,
   getCourses,
   createCourse,
-  updateCapacity,
+  updateCourse,
   deleteCourse
 };

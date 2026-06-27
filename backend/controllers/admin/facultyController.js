@@ -11,28 +11,92 @@ const getFaculty = async (req, res) => {
 
 const createFaculty = async (req, res) => {
   try {
-    const { name, department, designation } = req.body;
+    const { name, department, designation, phone, dob } = req.body;
 
-    let faculty_id;
-    let isUnique = false;
-
-    // Loop until we find an ID that doesn't exist
-    while (!isUnique) {
-      const randomNum = Math.floor(100 + Math.random() * 900); // 100 to 999
-      faculty_id = `F-${department}-${randomNum}`;
-
-      const [exists] = await pool.query("SELECT id FROM faculty WHERE faculty_id = ?", [faculty_id]);
-      if (exists.length === 0) isUnique = true;
+    // Validation
+    if (name && phone) {
+      const [existing] = await pool.query(
+        "SELECT id FROM faculty WHERE name = ? AND phone = ?",
+        [name, phone]
+      );
+      if (existing.length > 0) {
+        return res.status(400).json({ error: "A faculty member with this Name and Phone Number is already registered!" });
+      }
     }
 
-    const email = `${faculty_id}@san.edu`;
+    const deptMap = { "CSE": 60, "EEE": 50, "BBA": 40, "ACT": 30, "ENG": 20 };
+    const dCode = deptMap[department] || 99;
+    const nameSlug = name.split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
 
-    await pool.query(
-      "INSERT INTO faculty (faculty_id, name, email, department, designation, password) VALUES (?, ?, ?, ?, ?, '123456')",
-      [faculty_id, name, email, department, designation]
+    const prefix = `${nameSlug}-${dCode}-`;
+    const [lastFaculty] = await pool.query(
+      "SELECT faculty_id FROM faculty WHERE faculty_id LIKE ? ORDER BY faculty_id DESC LIMIT 1",
+      [`${prefix}%`]
     );
 
-    res.json({ success: true, message: `Faculty Added! ID: ${faculty_id}` });
+    let serial = 1;
+    if (lastFaculty.length > 0) {
+      const parts = lastFaculty[0].faculty_id.split("-");
+      const lastSerial = parseInt(parts[parts.length - 1]);
+      if (!isNaN(lastSerial)) serial = lastSerial + 1;
+    }
+    const finalId = `${prefix}${String(serial).padStart(3, "0")}`;
+
+    // Email Gen with Collision check
+    let baseEmail = `${nameSlug}@san.edu`;
+    let finalEmail = baseEmail;
+    let emailIdx = 1;
+    while (true) {
+      const [emailExists] = await pool.query("SELECT id FROM faculty WHERE email = ?", [finalEmail]);
+      if (emailExists.length === 0) break;
+      finalEmail = `${nameSlug}${emailIdx}@san.edu`;
+      emailIdx++;
+    }
+
+    await pool.query(
+      "INSERT INTO faculty (faculty_id, name, email, department, designation, phone, dob, password) VALUES (?, ?, ?, ?, ?, ?, ?, '123456')",
+      [finalId, name, finalEmail, department, designation, phone, dob]
+    );
+
+    res.json({ success: true, message: `Faculty Added! ID: ${finalId}` });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+};
+
+const updateFaculty = async (req, res) => {
+  try {
+    const { name, phone, dob, designation } = req.body;
+    await pool.query(
+      "UPDATE faculty SET name = ?, phone = ?, dob = ?, designation = ? WHERE id = ?",
+      [name, phone, dob, designation, req.params.id]
+    );
+    res.json({ success: true, message: "Faculty updated successfully!" });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+};
+
+const getFacultyCourses = async (req, res) => {
+  try {
+    const [facultyRows] = await pool.query("SELECT email FROM faculty WHERE id = ?", [req.params.id]);
+    if (facultyRows.length === 0) return res.status(404).json({ error: "Faculty not found" });
+
+    const facultyEmail = facultyRows[0].email;
+    const { getActiveSemester } = require('../../helpers/semesterManager');
+    const activeSem = await getActiveSemester();
+
+    const [courses] = await pool.query(
+      "SELECT id, code, name, semester, credits, theory_days, theory_time, lab_day, lab_time, section FROM courses WHERE instructor_email = ? ORDER BY semester DESC",
+      [facultyEmail]
+    );
+
+    const formatted = courses.map(c => ({
+      ...c,
+      status: c.semester === activeSem ? "Currently taking" : "Completed"
+    }));
+
+    res.json(formatted);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -50,5 +114,7 @@ const deleteFaculty = async (req, res) => {
 module.exports = {
   getFaculty,
   createFaculty,
+  updateFaculty,
+  getFacultyCourses,
   deleteFaculty
 };

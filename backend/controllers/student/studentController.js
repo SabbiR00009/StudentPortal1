@@ -66,6 +66,9 @@ const getStudentFinancials = async (req, res) => {
         ORDER BY date DESC
     `, [req.params.id]);
 
+    const [settingsRows] = await pool.query("SELECT setting_value FROM system_settings WHERE setting_key = 'payment_due_date'");
+    const dueDate = settingsRows.length > 0 ? settingsRows[0].setting_value : "Not Set";
+
     res.json({
       activeSem,
       credits,
@@ -73,7 +76,7 @@ const getStudentFinancials = async (req, res) => {
       previous_due: previousDue,
       total_payable: totalPayable,
       status: student.payment_status,
-      dueDate: "2026-08-15",
+      dueDate,
       transactions
     });
   } catch (e) {
@@ -86,7 +89,33 @@ const dropCourse = async (req, res) => {
     const { studentId, courseId } = req.body;
     const { getActiveSemester } = require('../../helpers/semesterManager');
     const activeSem = await getActiveSemester();
+
+    // Calculate completed credits
+    const [creditResult] = await pool.query(`
+        SELECT SUM(c.credits) as total 
+        FROM grades g JOIN courses c ON g.course_id = c.id 
+        WHERE g.student_id = ? AND g.grade != 'F'
+    `, [studentId]);
+    const completedCredits = creditResult[0].total || 0;
+
+    // Validate drop period
+    const [periods] = await pool.query(
+      "SELECT start_date, end_date, min_credits, max_credits FROM drop_periods WHERE semester = ? AND is_active = 1",
+      [activeSem]
+    );
     
+    const now = new Date();
+    const activePeriod = periods.find(p => 
+      completedCredits >= p.min_credits && 
+      completedCredits <= p.max_credits && 
+      now >= new Date(p.start_date) && 
+      now <= new Date(p.end_date)
+    );
+
+    if (!activePeriod) {
+      return res.status(403).json({ error: "Course dropping is currently disabled or outside your allowed credit timeframe." });
+    }
+
     const [courses] = await pool.query(`
       SELECT c.credits FROM student_courses sc 
       JOIN courses c ON sc.course_id = c.id 

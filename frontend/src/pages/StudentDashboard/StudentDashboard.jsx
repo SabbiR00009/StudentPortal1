@@ -16,18 +16,19 @@ import { useEffect } from 'react';
 import styles from './StudentDashboard.module.scss';
 
 const NAV_ITEMS = [
-  { view: 'overview', label: 'Overview', icon: 'fas fa-home' },
-  { view: 'grades', label: 'Grades & Schedule', icon: 'fas fa-graduation-cap' },
+  { view: 'home', label: 'Home', icon: 'fas fa-home' },
+  { view: 'schedule', label: 'Class Schedule', icon: 'fas fa-calendar-alt' },
+  { view: 'grades', label: 'Grade Report', icon: 'fas fa-graduation-cap' },
+  { view: 'advising', label: 'Advising Portal', icon: 'fas fa-edit' },
   { view: 'financials', label: 'Financials', icon: 'fas fa-file-invoice-dollar' },
-  { view: 'advising', label: 'Advising', icon: 'fas fa-calendar-alt' },
   { view: 'contact', label: 'Contact', icon: 'fas fa-envelope' },
-  { view: 'drop', label: 'Drop Semester', icon: 'fas fa-ban' }
+  { view: 'drop', label: 'Drop Semester', icon: 'fas fa-ban', danger: true }
 ];
 
 export default function StudentDashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [activeView, setActiveView] = useState('overview');
+  const [activeView, setActiveView] = useState('home');
   const [announcements, setAnnouncements] = useState([]);
   const [activeSem, setActiveSem] = useState(null);
 
@@ -41,13 +42,15 @@ export default function StudentDashboard() {
 
   const renderView = () => {
     switch (activeView) {
-      case 'overview': return <HomeView activeSem={activeSem} onNavigate={setActiveView} />;
+      case 'home': return <HomeView activeSem={activeSem} onNavigate={setActiveView} />;
+      case 'schedule': return <ScheduleView />;
       case 'grades': return <GradesView activeSem={activeSem} />;
       case 'financials': return <FinancialsView activeSem={activeSem} />;
       case 'advising': return <AdvisingView activeSem={activeSem} />;
+      case 'profile': return <ProfileView />;
       case 'contact': return <ContactView />;
       case 'drop': return <DropSemesterView />;
-      default: return <HomeView activeSem={activeSem} />;
+      default: return <HomeView activeSem={activeSem} onNavigate={setActiveView} />;
     }
   };
 

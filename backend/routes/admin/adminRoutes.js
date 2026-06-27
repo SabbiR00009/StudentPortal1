@@ -2,7 +2,6 @@ const express = require('express');
 const facultyController = require('../../controllers/admin/facultyController');
 const studentController = require('../../controllers/admin/studentController');
 const courseController = require('../../controllers/admin/courseController');
-const gradeController = require('../../controllers/admin/gradeController');
 const financialsController = require('../../controllers/admin/financialsController');
 const miscController = require('../../controllers/admin/miscController');
 
@@ -11,6 +10,8 @@ const router = express.Router();
 // Faculty
 router.get('/faculty', facultyController.getFaculty);
 router.post('/faculty', facultyController.createFaculty);
+router.put('/faculty/:id', facultyController.updateFaculty);
+router.get('/faculty/:id/courses', facultyController.getFacultyCourses);
 router.delete('/faculty/:id', facultyController.deleteFaculty);
 
 // Students
@@ -25,13 +26,8 @@ router.post('/student/drop', studentController.dropStudent);
 router.get('/config/schedules', courseController.getSchedules);
 router.get('/courses', courseController.getCourses);
 router.post('/courses', courseController.createCourse);
-router.put('/courses/:id/capacity', courseController.updateCapacity);
+router.put('/courses/:id', courseController.updateCourse);
 router.delete('/courses/:id', courseController.deleteCourse);
-
-// Grades
-router.get('/grades/search-student', gradeController.searchStudent);
-router.get('/grades/pending-courses/:studentId', gradeController.getPendingCourses);
-router.post('/grades/batch', gradeController.batchPublishGrades);
 
 // Financials
 router.get('/financials', financialsController.getFinancials);
@@ -42,11 +38,17 @@ const dropRequestController = require('../../controllers/admin/dropRequestContro
 
 // Misc
 router.post('/admins', miscController.createAdmin);
-router.post('/semesters', miscController.createSemester);
 router.post('/announcements', miscController.postAnnouncement);
 router.get('/slots', miscController.getSlots);
 router.post('/slots', miscController.createSlot);
 router.delete('/slots/:id', miscController.deleteSlot);
+
+router.get('/drop-periods', miscController.getDropPeriods);
+router.post('/drop-periods', miscController.createDropPeriod);
+router.delete('/drop-periods/:id', miscController.deleteDropPeriod);
+
+router.get('/settings', miscController.getSettings);
+router.put('/settings', miscController.updateSettings);
 
 // Drop Requests
 router.get('/drop-requests', dropRequestController.getAllRequests);

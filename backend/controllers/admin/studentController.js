@@ -24,6 +24,17 @@ const createStudent = async (req, res) => {
   try {
     const s = req.body;
 
+    // Check for duplicate registration
+    if (s.name && s.phone) {
+      const [existing] = await pool.query(
+        "SELECT id FROM students WHERE name = ? AND phone = ?",
+        [s.name, s.phone]
+      );
+      if (existing.length > 0) {
+        return res.status(400).json({ error: "A student with this Name and Phone Number is already registered!" });
+      }
+    }
+
     // 1. Generate Sequential Student ID
     const admittedYear = s.admitted_year || new Date().getFullYear();
     const admittedSem = s.admitted_semester || "Fall";
@@ -93,13 +104,13 @@ const updateStudent = async (req, res) => {
           name=?, phone=?, program=?, department=?, 
           year=?, semester=?, dob=?, blood_group=?, 
           nid=?, marital_status=?, present_address=?, permanent_address=?, 
-          advisor_name=?, advisor_email=?
+          advisor_name=?, advisor_email=?, previous_due=?
       WHERE student_id = ?`,
       [
         s.name, s.phone, s.program, s.department,
         s.year, s.semester, s.dob, s.blood_group,
         s.nid, s.marital_status, s.present_address, s.permanent_address,
-        s.advisor_name, s.advisor_email, req.params.id
+        s.advisor_name, s.advisor_email, s.previous_due, req.params.id
       ]
     );
     res.json({ success: true, message: "Student Profile Updated" });
