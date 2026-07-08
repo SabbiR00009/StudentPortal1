@@ -57,7 +57,7 @@ export default function StudentDashboard() {
   return (
     <div className={styles.dashboard}>
       <Navbar
-        title="SAN University"
+        title="Bengal International University"
         onLogoClick={() => setActiveView('home')}
         onProfileClick={() => setActiveView('profile')}
       />

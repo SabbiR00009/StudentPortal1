@@ -88,8 +88,8 @@ export default function Login() {
     <div className={styles.wrapper}>
       <div className={styles.container}>
         <div className={styles.left}>
-          <h1>SAN University</h1>
-          <p>Welcome to the Next-Gen Student Portal.</p>
+          <h1>Bengal International University</h1>
+          <p>Welcome to your BIU Student &amp; Faculty Portal.</p>
           <button className={styles.btnBack} onClick={() => navigate('/')}>
             <i className="fas fa-arrow-left"></i> Back to Home
           </button>
@@ -116,7 +116,7 @@ export default function Login() {
                 onChange={(e) => setId(e.target.value)}
                 placeholder={
                   isFacultyAdmin
-                    ? 'admin@san.edu / F-CSE-101'
+                    ? 'admin@biu.edu.bd / F001'
                     : 'e.g., 2025-3-60-001'
                 }
                 required
@@ -200,7 +200,7 @@ export default function Login() {
                     type="email"
                     value={forgotEmail}
                     onChange={(e) => setForgotEmail(e.target.value)}
-                    placeholder="your.email@san.edu"
+                    placeholder="your.email@biu.edu.bd"
                     style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: '7px', fontSize: '0.95em', boxSizing: 'border-box' }}
                   />
                 </div>

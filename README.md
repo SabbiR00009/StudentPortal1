@@ -1,437 +1,136 @@
-# 🎓 SAN University — Student Portal
+# 🎓 Bengal International University (BIU)
 
-A full-stack **University Management System** built with **React + Vite** on the frontend and **Express.js + MySQL** on the backend. The portal provides role-based dashboards for **Students**, **Faculty**, and **Admins**, covering academic advising, course enrollment, grade management, financials, messaging, and more.
+A full-stack **university website + management system**. It combines a public,
+marketing-grade university website with a secure, role-based portal for
+**Students**, **Faculty**, and **Admins** — covering advising, enrollment, grades,
+financials, messaging, and administration.
 
----
-
-## 📸 Overview
-
-SAN University Student Portal is designed to simulate a real-world university ERP system. It features:
-
-- **Three distinct role-based dashboards** (Student, Faculty, Admin)
-- **JWT cookie-based authentication** with forced password change on first login
-- **Course advising system** with real-time schedule conflict detection
-- **Automated semester transitions** via cron jobs
-- **In-app messaging** between students, faculty, and administration
-- **PDF generation** for grade reports and financial statements
-- **Dark/Light theme** support
+Built with **React + Vite** (frontend) and **Express.js + MySQL** (backend), and
+packaged as a single deployable Docker service.
 
 ---
 
-## ✨ Features
+## ✨ What's inside
+
+### 🌐 Public website
+Home · About · Academics (6 schools, 38 programs) · Admissions (steps, tuition,
+scholarships) · Research · Campus Life · News & Events · Contact (working inquiry
+form) — responsive, dark/light themed, and fully rebranded to BIU.
 
 ### 🧑‍🎓 Student Portal
-| Feature | Description |
-|---|---|
-| **Home Dashboard** | View enrolled courses, announcements, and quick stats |
-| **Course Advising** | Browse available courses, add to advising slip with automatic time-conflict detection, and confirm enrollment |
-| **Schedule View** | Weekly class schedule in a visual timetable format |
-| **Grades** | View semester-wise grades and GPA with PDF export |
-| **Financials** | Track payment status, previous dues, and semester fees |
-| **Drop Semester** | Submit semester drop requests with reason for admin approval |
-| **Contact / Messaging** | Send messages to faculty & admin, view threaded conversations |
-| **Profile** | View and manage personal academic information |
-| **Change Password** | Update account password |
+Home dashboard, course advising with real-time schedule-conflict detection, weekly
+schedule, grades + GPA (PDF export), financials, semester-drop requests, messaging,
+and profile.
 
 ### 👨‍🏫 Faculty Portal
-| Feature | Description |
-|---|---|
-| **Overview** | Dashboard with assigned course summary |
-| **Course Manager** | View assigned courses and enrolled student lists |
-| **Advising** | Review and manage student advising requests |
-| **Grade Submission** | Submit individual student grades for assigned courses |
-| **Profile** | View faculty profile and department info |
+Assigned courses, enrolled-student lists, advisee management, grade submission, and
+profile.
 
 ### 🛡️ Admin Panel
-| Feature | Description |
-|---|---|
-| **Overview** | High-level stats — total students, faculty, courses, pending requests |
-| **Student Management** | Full CRUD — create, edit, delete students, enroll/drop from courses |
-| **Faculty Management** | Full CRUD — create, edit, delete faculty members, view assigned courses |
-| **Course Management** | Create and manage courses with section support, schedule rules, and instructor assignment |
-| **Advising Slots** | Configure advising time slots with credit-range restrictions |
-| **Grade Management** | Assign grades to students for enrolled courses |
-| **Financials** | View and update student payment statuses |
-| **Drop Requests** | Review and approve/reject student semester drop requests |
-| **Password Resets** | Handle student password reset requests |
-| **Announcements** | Post university-wide announcements |
-| **Messaging** | View and respond to student/faculty messages |
-| **Drop Periods** | Configure semester drop windows |
-| **System Settings** | Manage active semester and trigger semester transitions |
+Full CRUD for students, faculty, and courses; advising slots; grade management;
+financials; drop-request and password-reset review; announcements; messaging; and
+system settings including automated semester transitions.
 
 ---
 
-## 🛠️ Tech Stack
+## 🛠️ Tech stack
 
-### Frontend
-| Technology | Purpose |
-|---|---|
-| **React 19** | UI library |
-| **Vite 7** | Build tool & dev server |
-| **React Router v7** | Client-side routing |
-| **SCSS Modules** | Component-scoped styling |
-| **jsPDF + AutoTable** | Client-side PDF generation |
-| **Context API** | Global state (Auth, Theme) |
-
-### Backend
-| Technology | Purpose |
-|---|---|
-| **Express.js 5** | REST API framework |
-| **MySQL 2** | Relational database (via connection pool) |
-| **JWT** | Token-based authentication (httpOnly cookies) |
-| **bcryptjs** | Password hashing |
-| **node-cron** | Scheduled semester transitions |
-| **cookie-parser** | Cookie handling |
-| **dotenv** | Environment variable management |
-| **nodemon** | Development hot-reloading |
-| **concurrently** | Run frontend & backend simultaneously |
+**Frontend:** React 19 · Vite 7 · React Router 7 · SCSS Modules · jsPDF
+**Backend:** Express 5 · MySQL (mysql2) · JWT (httpOnly cookies) · bcryptjs ·
+Helmet · express-rate-limit · compression · node-cron
+**Deploy:** Docker (multi-stage) · docker-compose · Render blueprint
 
 ---
 
-## 📁 Directory Structure
-
-```
-StudentPortal1/
-├── package.json                     # Root workspace — runs both frontend & backend
-├── .gitignore                       # Git ignore rules
-│
-├── backend/
-│   ├── server.js                    # Express app entry point, route mounting, cron jobs
-│   ├── db.js                        # MySQL connection pool configuration
-│   ├── database.js                  # SQLite schema definitions & seed data (legacy/dev)
-│   ├── package.json                 # Backend dependencies
-│   ├── .env                         # Environment variables (DB_HOST, JWT_SECRET, etc.)
-│   │
-│   ├── controllers/
-│   │   ├── auth/
-│   │   │   └── authController.js        # Login, logout, session (/me), password change
-│   │   ├── admin/
-│   │   │   ├── studentController.js     # Student CRUD, enroll/drop operations
-│   │   │   ├── facultyController.js     # Faculty CRUD, course assignments
-│   │   │   ├── courseController.js       # Course CRUD, schedule config
-│   │   │   ├── financialsController.js  # Payment status management
-│   │   │   ├── dropRequestController.js # Semester drop request handling
-│   │   │   ├── passwordResetController.js # Password reset request workflow
-│   │   │   ├── messageController.js     # Admin messaging & overview stats
-│   │   │   └── miscController.js        # Admins, announcements, slots, settings
-│   │   ├── student/
-│   │   │   ├── studentController.js     # Student profile, courses, grades, financials
-│   │   │   ├── advisingController.js    # Advising access, course validation, confirmation
-│   │   │   ├── dropSemesterController.js # Drop semester request submission
-│   │   │   └── messageController.js     # Student messaging, faculty contacts
-│   │   └── faculty/
-│   │       └── facultyController.js     # Faculty courses, advisees, grade submission
-│   │
-│   ├── routes/
-│   │   ├── auth/
-│   │   │   └── authRoutes.js            # POST /login, /logout, /me, /change-password
-│   │   ├── admin/
-│   │   │   └── adminRoutes.js           # All /api/admin/* routes (protected)
-│   │   ├── student/
-│   │   │   ├── studentRoutes.js         # All /api/students/* routes (protected)
-│   │   │   └── advisingRoutes.js        # All /api/advising/* routes (protected)
-│   │   └── faculty/
-│   │       └── facultyRoutes.js         # All /api/faculty/* routes (protected)
-│   │
-│   ├── middleware/
-│   │   └── authMiddleware.js            # JWT verification, role guards (isStudent/isFaculty/isAdmin)
-│   │
-│   ├── helpers/
-│   │   ├── semesterManager.js           # Semester calculation, auto-transition logic, cron handler
-│   │   └── conflictChecker.js           # Time/day schedule conflict detection for advising
-│   │
-│   └── migration files                  # Database migration scripts
-│       ├── migration.js
-│       ├── migrate_drop_requests.js
-│       ├── migrate_financials.js
-│       └── migrate_messages.js
-│
-└── frontend/
-    ├── index.html                       # HTML entry point
-    ├── vite.config.js                   # Vite configuration with React plugin
-    ├── package.json                     # Frontend dependencies
-    │
-    └── src/
-        ├── main.jsx                     # React DOM root, providers (Auth, Theme, Router)
-        ├── App.jsx                      # Route definitions, ProtectedRoute wrappers
-        ├── api.js                       # Centralized API layer — all fetch calls
-        │
-        ├── context/
-        │   ├── AuthContext.jsx          # Auth state, login/logout, session persistence
-        │   └── ThemeContext.jsx         # Dark/Light theme toggle
-        │
-        ├── components/
-        │   ├── Navbar/
-        │   │   ├── Navbar.jsx           # Top navigation bar with user info & theme toggle
-        │   │   └── Navbar.module.scss
-        │   ├── Sidebar/
-        │   │   ├── Sidebar.jsx          # Dashboard side navigation menu
-        │   │   └── Sidebar.module.scss
-        │   ├── Modal/
-        │   │   ├── Modal.jsx            # Reusable modal dialog component
-        │   │   └── Modal.module.scss
-        │   ├── StatCard/
-        │   │   ├── StatCard.jsx         # Dashboard stat card widget
-        │   │   └── StatCard.module.scss
-        │   └── ChangePassword/
-        │       ├── ChangePassword.jsx   # Password change form component
-        │       └── ChangePassword.module.scss
-        │
-        ├── pages/
-        │   ├── Landing/
-        │   │   ├── Landing.jsx          # Public landing page
-        │   │   └── Landing.module.scss
-        │   ├── Login/
-        │   │   ├── Login.jsx            # Role-based login (Student/Faculty/Admin)
-        │   │   └── Login.module.scss
-        │   ├── ForceChangePassword/
-        │   │   └── ForceChangePassword.jsx  # Mandatory password change on first login
-        │   │
-        │   ├── StudentDashboard/
-        │   │   ├── StudentDashboard.jsx     # Student dashboard layout & routing
-        │   │   ├── StudentDashboard.module.scss
-        │   │   └── views/
-        │   │       ├── HomeView.jsx         # Student home — announcements, quick info
-        │   │       ├── AdvisingView.jsx     # Course advising with conflict checker
-        │   │       ├── ScheduleView.jsx     # Weekly schedule timetable
-        │   │       ├── GradesView.jsx       # Grade history with PDF export
-        │   │       ├── FinancialsView.jsx   # Payment status and dues
-        │   │       ├── DropSemesterView.jsx # Semester drop request form
-        │   │       ├── ContactView.jsx      # Messaging with faculty/admin
-        │   │       └── ProfileView.jsx      # Student profile details
-        │   │
-        │   ├── FacultyDashboard/
-        │   │   ├── FacultyDashboard.jsx     # Faculty dashboard layout & routing
-        │   │   ├── FacultyDashboard.module.scss
-        │   │   └── views/
-        │   │       ├── OverviewView.jsx     # Faculty overview stats
-        │   │       ├── CourseManager.jsx     # View courses & enrolled students
-        │   │       ├── AdvisingView.jsx     # Manage advising requests
-        │   │       └── ProfileView.jsx      # Faculty profile details
-        │   │
-        │   └── AdminDashboard/
-        │       ├── AdminDashboard.jsx       # Admin dashboard layout & routing
-        │       ├── AdminDashboard.module.scss
-        │       └── views/
-        │           ├── OverviewView.jsx         # Admin stats overview
-        │           ├── StudentsView.jsx         # Student CRUD & enrollment
-        │           ├── FacultyView.jsx          # Faculty CRUD
-        │           ├── CoursesView.jsx          # Course CRUD with schedules
-        │           ├── SlotsView.jsx            # Advising slot configuration
-        │           ├── FinancialsView.jsx       # Payment management
-        │           ├── DropRequestsView.jsx     # Drop request reviews
-        │           ├── PasswordResetRequestsView.jsx  # Password reset reviews
-        │           ├── AnnouncementsView.jsx    # Post announcements
-        │           ├── MessagesView.jsx         # Admin messaging hub
-        │           ├── AdminsView.jsx           # Create new admin accounts
-        │           └── ProfileView.jsx          # Admin profile
-        │
-        └── styles/
-            ├── global.scss              # Global base styles and resets
-            ├── _variables.scss          # SCSS design tokens (colors, spacing, fonts)
-            └── _mixins.scss             # SCSS reusable mixins (responsive breakpoints, etc.)
-```
-
----
-
-## 🗄️ Database Schema
-
-The system uses **MySQL** with the following core tables:
-
-| Table | Purpose |
-|---|---|
-| `students` | Student records — academic info, contact, financial status, GPA |
-| `faculty` | Faculty members — department, designation, credentials |
-| `admins` | Administrator accounts |
-| `courses` | Course catalog — code, section, schedule, instructor, capacity |
-| `student_courses` | Enrollment records linking students to courses |
-| `grades` | Grade records — marks, letter grade, GPA points per course |
-| `announcements` | University-wide announcements |
-| `advising_periods` | Configurable advising windows per semester |
-| `advising_requests` | Student course advising requests (pending/approved) |
-| `advising_slots` | Time slots with credit-range restrictions for advising |
-| `schedule_rules` | Configurable schedule rules (theory days, lab days, time slots) |
-| `system_settings` | System-level settings (active semester, etc.) |
-
----
-
-## 🔐 Authentication & Authorization
-
-- **JWT tokens** stored as **httpOnly cookies** for secure session management
-- **Role-based access control** with three levels: `student`, `faculty`, `admin`
-- **Middleware guards** (`verifyToken`, `isStudent`, `isFaculty`, `isAdmin`) protect all API routes
-- **Force password change** on first login (when default password is detected)
-- **Public password reset request** endpoint for locked-out students
-
----
-
-## 🚀 Getting Started
+## 🚀 Quick start (local)
 
 ### Prerequisites
+- Node.js 18+ and MySQL 8+ (or just Docker — see below)
 
-- **Node.js** (v18+)
-- **MySQL** (v8+)
-- **npm**
-
-### 1. Clone the Repository
-
+### 1. Install dependencies
 ```bash
-git clone https://github.com/<your-username>/StudentPortal1.git
-cd StudentPortal1
+npm run install:all      # installs backend + frontend
+npm install              # root (concurrently)
 ```
 
-### 2. Configure Environment
-
-Create a `.env` file inside the `backend/` directory:
-
-```env
-DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=your_mysql_password
-DB_NAME=student_portal
-JWT_SECRET=your_super_secret_key
-PORT=3000
-```
-
-### 3. Set Up the Database
-
-Create the MySQL database:
-
-```sql
-CREATE DATABASE student_portal;
-```
-
-Run the migration scripts to create tables and seed data:
-
+### 2. Configure the backend
 ```bash
 cd backend
-node migration.js
-node migrate_financials.js
-node migrate_messages.js
-node migrate_drop_requests.js
+cp .env.example .env      # then edit DB credentials + JWT_SECRET
 ```
 
-### 4. Install Dependencies
-
+### 3. Create & seed the database
 ```bash
-# From the project root
-npm install
-
-# Install backend dependencies
-cd backend && npm install
-
-# Install frontend dependencies
-cd ../frontend && npm install
+npm run init-db           # creates the DB, all tables, and demo data
 ```
 
-### 5. Run the Application
-
+### 4. Run everything
 ```bash
-# From the project root — starts both frontend & backend
-npm run dev
+npm run dev               # backend on :3000, frontend on :5173
 ```
+Open **http://localhost:5173**. In dev, Vite proxies `/api` to the backend.
 
-| Service | URL |
-|---|---|
-| Frontend (Vite) | `http://localhost:5173` |
-| Backend (Express) | `http://localhost:3000` |
+### 🐳 …or run the whole stack with Docker
+```bash
+docker compose up --build
+docker compose exec app npm run init-db   # first run only
+# open http://localhost:3000
+```
 
 ---
 
-## 🔑 Default Login Credentials
+## 🔑 Default logins (demo seed)
 
 | Role | ID / Email | Password |
 |---|---|---|
-| **Admin** | `sabbir.hossain.28678@gmail.com` | `sabbir009` |
-| **Admin** | `nura@gmail.com` | `123456` |
-| **Faculty** | `F001` — `F006` | `123456` |
+| **Admin** | `admin@biu.edu.bd` | `admin123` |
+| **Admin** | `registrar@biu.edu.bd` | `123456` |
+| **Faculty** | `F001` … `F006` | `123456` |
 | **Student** | `2022-3-60-001` (CSE) | `123456` |
 | **Student** | `2022-3-50-001` (EEE) | `123456` |
 
-> ⚠️ Users with the default password `123456` will be prompted to change it on first login.
+> Accounts using the default password are forced to change it on first login.
+> **Change the admin password immediately after deploying.**
 
 ---
 
-## 📡 API Endpoints Overview
+## 🔐 Security (commercial hardening)
 
-### Auth (`/api`)
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/login` | Authenticate user (student/faculty/admin) |
-| `POST` | `/logout` | Clear session cookie |
-| `GET` | `/me` | Get current session info |
-| `POST` | `/change-password` | Change account password |
-| `POST` | `/password-reset-request` | Public — request password reset |
-
-### Student (`/api/students`) — 🔒 Requires Student Auth
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/:id` | Get student profile |
-| `GET` | `/:id/courses` | Get enrolled courses |
-| `GET` | `/:id/grades` | Get grade history |
-| `GET` | `/:id/financials` | Get financial details |
-| `POST` | `/drop-course` | Drop a specific course |
-| `POST` | `/drop-request` | Submit semester drop request |
-| `GET` | `/messages` | Get student messages |
-| `POST` | `/messages` | Send a message |
-
-### Advising (`/api/advising`) — 🔒 Requires Student Auth
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/check-access/:studentId` | Check advising eligibility |
-| `GET` | `/courses` | Get available courses |
-| `POST` | `/validate` | Validate course (conflict check) |
-| `POST` | `/confirm` | Confirm advising selections |
-
-### Admin (`/api/admin`) — 🔒 Requires Admin Auth
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET/POST/PUT/DELETE` | `/students` | Student CRUD operations |
-| `GET/POST/PUT/DELETE` | `/faculty` | Faculty CRUD operations |
-| `GET/POST/PUT/DELETE` | `/courses` | Course CRUD operations |
-| `GET/PUT` | `/financials` | Financial status management |
-| `GET/PUT` | `/drop-requests` | Drop request reviews |
-| `GET/PUT` | `/password-reset-requests` | Password reset handling |
-| `GET/POST/DELETE` | `/slots` | Advising slot configuration |
-| `POST` | `/announcements` | Post announcements |
-| `GET/POST` | `/messages` | Admin messaging |
-| `GET/PUT` | `/settings` | System settings |
-
-### Faculty (`/api/faculty`) — 🔒 Requires Faculty Auth
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/:email/courses` | Get assigned courses |
-| `GET` | `/:email/advisees` | Get advising students |
-| `GET` | `/course/:id/students` | Get enrolled students |
-| `POST` | `/grade` | Submit student grade |
+- Passwords **bcrypt-hashed at rest**; JWTs in **httpOnly** cookies.
+- `JWT_SECRET` **required in production** — the app refuses to boot without it.
+- **Helmet** security headers, **rate limiting** (stricter on auth), request-size
+  limits, and centralized error handling that hides internals in production.
+- Environment-driven CORS and cookie (`SameSite`/`Secure`) settings.
 
 ---
 
-## ⚙️ Automated Semester Transitions
+## 📁 Structure
 
-The system includes a **cron-based semester manager** that:
+```
+StudentPortal1/
+├── Dockerfile · docker-compose.yml · render.yaml   # deployment
+├── DEPLOYMENT.md                                   # full deploy guide
+├── backend/
+│   ├── server.js              # hardened Express entry (API + serves frontend)
+│   ├── config/env.js          # centralized, validated configuration
+│   ├── db.js                  # MySQL pool
+│   ├── scripts/initDb.js      # consolidated schema + seed (replaces old migrations)
+│   ├── controllers/ routes/ middleware/ helpers/
+└── frontend/
+    └── src/
+        ├── brand.js           # university identity (single source of truth)
+        ├── pages/public/      # the public university website
+        ├── pages/{Student,Faculty,Admin}Dashboard/
+        └── styles/            # theme tokens (BIU emerald + gold)
+```
 
-1. Runs automatically at **midnight daily** via `node-cron`
-2. Also runs **once on server boot** to catch up
-3. Calculates the expected semester based on the current date:
-   - **Spring**: January — April
-   - **Summer**: May — August
-   - **Fall**: September — December
-4. On transition:
-   - Marks graded enrollments as `completed`
-   - Marks ungraded enrollments as `pending`
-   - Clones course catalog for the new semester
-   - Updates the system `active_semester` setting
+See **[DEPLOYMENT.md](./DEPLOYMENT.md)** to put it online.
 
 ---
 
 ## 📄 License
-
-This project is for educational purposes.
-
----
+Educational / portfolio use.
 
 ## 👤 Authors
-
 - **Sabbir Hossain**
 - **Nura Alam Naim**

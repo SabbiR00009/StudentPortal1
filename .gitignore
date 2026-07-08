@@ -1,4 +1,4 @@
-# --- Dependencies (Crucial for Mac/Windows sync) ---
+# --- Dependencies ---
 node_modules/
 .pnp
 .pnp.js
@@ -6,19 +6,21 @@ node_modules/
 # --- Testing ---
 coverage/
 
-# --- Production Build Output ---
+# --- Production build output ---
 dist/
 build/
-*package-lock.json
+backend/public/
 
-# --- Environment Variables (Security) ---
+# --- Environment variables (secrets) ---
 .env
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*.local
 
-# --- System Files (Junk) ---
+# --- Local SQLite / scratch data ---
+*.db
+cookie*.txt
+
+# --- System files ---
 .DS_Store
 Thumbs.db
 *.log
@@ -26,8 +28,11 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# --- IDE Settings ---
+# --- IDE ---
 .vscode/
 .idea/
 *.swp
 *.swo
+
+# NOTE: package-lock.json files ARE committed on purpose — `npm ci`
+# (used in the Docker build) requires them.

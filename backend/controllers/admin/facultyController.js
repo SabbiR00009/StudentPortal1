@@ -44,13 +44,13 @@ const createFaculty = async (req, res) => {
     const finalId = `${prefix}${String(serial).padStart(3, "0")}`;
 
     // Email Gen with Collision check
-    let baseEmail = `${nameSlug}@san.edu`;
+    let baseEmail = `${nameSlug}@biu.edu.bd`;
     let finalEmail = baseEmail;
     let emailIdx = 1;
     while (true) {
       const [emailExists] = await pool.query("SELECT id FROM faculty WHERE email = ?", [finalEmail]);
       if (emailExists.length === 0) break;
-      finalEmail = `${nameSlug}${emailIdx}@san.edu`;
+      finalEmail = `${nameSlug}${emailIdx}@biu.edu.bd`;
       emailIdx++;
     }
 

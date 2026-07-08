@@ -18,8 +18,8 @@ export default function Navbar({ title, icon, avatarBg, onLogoClick, onProfileCl
   return (
     <div className={styles.navbar}>
       <div className={styles.logoContainer} onClick={onLogoClick}>
-        <img src="/logo.png" alt="SAN Logo" className={styles.logo} />
-        <h1>{icon && <i className={icon}></i>} {title || 'SAN University'}</h1>
+        <img src="/logo.png" alt="BIU Logo" className={styles.logo} />
+        <h1>{icon && <i className={icon}></i>} {title || 'Bengal International University'}</h1>
       </div>
 
       <div className={styles.userInfo}>

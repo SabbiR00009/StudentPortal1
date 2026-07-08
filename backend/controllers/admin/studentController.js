@@ -61,7 +61,7 @@ const createStudent = async (req, res) => {
     }
 
     const finalId = `${prefix}${String(serial).padStart(3, "0")}`;
-    const finalEmail = `${finalId}@san.edu`;
+    const finalEmail = `${finalId}@biu.edu.bd`;
 
     // 2. Generate Collision-Proof Unique ID (U-XXXXXX)
     let uniqueId;

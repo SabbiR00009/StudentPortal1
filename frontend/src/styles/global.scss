@@ -1,43 +1,58 @@
 @use 'variables' as *;
 
 :root {
-  --bg-primary: #f3f4f6;
+  --bg-primary: #f4f6f5;
   --bg-card: #ffffff;
-  --bg-hover: #f9fafb;
-  --bg-inset: #f9fafb;
-  
-  --text-main: #1f2937;
-  --text-muted: #6b7280;
+  --bg-hover: #f4faf7;
+  --bg-inset: #f7faf9;
+
+  --text-main: #16241f;
+  --text-muted: #5a6b64;
   --text-light: #9ca3af;
-  
-  --border-color: #e5e7eb;
-  --border-light: #f3f4f6;
-  
+
+  --border-color: #e3e9e6;
+  --border-light: #f0f4f2;
+
   --shadow-color: rgba(0, 0, 0, 0.05);
-  
-  --indigo-primary: #4f46e5;
-  --indigo-bg: #eef2ff;
-  --indigo-light: #818cf8;
+
+  // ─── Bengal International University brand ───
+  // The dashboards read the --indigo-* tokens as their accent, so remapping
+  // these to BIU emerald recolors the whole portal in one place.
+  --indigo-primary: #0b6b4f;
+  --indigo-bg: #e8f5ef;
+  --indigo-light: #34d399;
+
+  --biu-green: #0b6b4f;
+  --biu-green-dark: #075e45;
+  --biu-green-deep: #063d2d;
+  --biu-gold: #c9a227;
+  --biu-gold-light: #e6c65c;
 }
 
 [data-theme="dark"] {
-  --bg-primary: #0f172a;
-  --bg-card: #1e293b;
-  --bg-hover: #334155;
-  --bg-inset: #0f172a;
+  --bg-primary: #0b1512;
+  --bg-card: #12211c;
+  --bg-hover: #1b3029;
+  --bg-inset: #0b1512;
 
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --text-light: #64748b;
+  --text-main: #f1f7f4;
+  --text-muted: #9fb3ab;
+  --text-light: #6b8078;
 
-  --border-color: #334155;
-  --border-light: #1e293b;
-  
+  --border-color: #24352e;
+  --border-light: #12211c;
+
   --shadow-color: rgba(0, 0, 0, 0.5);
 
-  --indigo-primary: #6366f1;
-  --indigo-bg: rgba(99, 102, 241, 0.1);
-  --indigo-light: #818cf8;
+  --indigo-primary: #22c58c;
+  --indigo-bg: rgba(34, 197, 140, 0.12);
+  --indigo-light: #34d399;
+
+  --biu-green: #22c58c;
+  --biu-green-dark: #10b981;
+  --biu-green-deep: #063d2d;
+  --biu-gold: #e6c65c;
+  --biu-gold-light: #f2dd93;
 }
 * {
   margin: 0;

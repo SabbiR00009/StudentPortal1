@@ -1,15 +1,18 @@
 const mysql = require('mysql2/promise');
-require('dotenv').config();
+const { DB } = require('./config/env');
 
 const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'student_portal',
+  host: DB.host,
+  port: DB.port,
+  user: DB.user,
+  password: DB.password,
+  database: DB.database,
+  ssl: DB.ssl,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
   decimalNumbers: true,
+  enableKeepAlive: true,
 });
 
 module.exports = pool;

@@ -1,4 +1,7 @@
-export const API_URL = 'http://localhost:3000/api';
+// Same-origin relative API base. In dev, Vite proxies `/api` to the backend;
+// in production this server serves both the app and the API. Override with
+// VITE_API_URL only for a cross-site (separate-domain) deployment.
+export const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 export const request = async (endpoint, options = {}) => {
   const url = `${API_URL}${endpoint}`;
@@ -62,6 +65,10 @@ export const confirmAdvising = (studentId, courseIds) =>
 
 // ─── Announcements ───
 export const getAnnouncements = () => request('/announcements');
+
+// ─── Public contact form ───
+export const submitContact = (data) =>
+  request('/contact', { method: 'POST', body: data });
 
 // ─── Admin APIs ───
 export const getAdminStudents = (search) =>

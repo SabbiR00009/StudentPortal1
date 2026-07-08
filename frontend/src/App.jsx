@@ -1,6 +1,13 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
-import Landing from './pages/Landing/Landing';
+import Home from './pages/public/Home';
+import About from './pages/public/About';
+import Academics from './pages/public/Academics';
+import Admissions from './pages/public/Admissions';
+import Research from './pages/public/Research';
+import CampusLife from './pages/public/CampusLife';
+import News from './pages/public/News';
+import Contact from './pages/public/Contact';
 import Login from './pages/Login/Login';
 import StudentDashboard from './pages/StudentDashboard/StudentDashboard';
 import AdminDashboard from './pages/AdminDashboard/AdminDashboard';
@@ -31,7 +38,16 @@ function PasswordChangeRoute({ children }) {
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Landing />} />
+      {/* ─── Public university website ─── */}
+      <Route path="/" element={<Home />} />
+      <Route path="/about" element={<About />} />
+      <Route path="/academics" element={<Academics />} />
+      <Route path="/admissions" element={<Admissions />} />
+      <Route path="/research" element={<Research />} />
+      <Route path="/campus-life" element={<CampusLife />} />
+      <Route path="/news" element={<News />} />
+      <Route path="/contact" element={<Contact />} />
+
       <Route path="/login" element={<Login />} />
       <Route path="/login/:role" element={<Login />} />
 
