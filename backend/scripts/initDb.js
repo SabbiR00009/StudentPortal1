@@ -26,7 +26,13 @@ async function initDb() {
     password: DB.password,
     ssl: DB.ssl,
   });
-  await bootstrap.query(`CREATE DATABASE IF NOT EXISTS \`${DB.database}\``);
+  // Managed databases (e.g. Aiven) pre-create the database and may not grant
+  // global CREATE-DATABASE rights — that's fine, we just use the existing one.
+  try {
+    await bootstrap.query(`CREATE DATABASE IF NOT EXISTS \`${DB.database}\``);
+  } catch (e) {
+    console.log(`Note: could not CREATE DATABASE (${e.code}); assuming "${DB.database}" already exists.`);
+  }
   await bootstrap.end();
 
   const db = await mysql.createConnection({
